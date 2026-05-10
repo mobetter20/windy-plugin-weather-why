@@ -1,0 +1,282 @@
+// Open-Meteo data fetcher. Ports build_facts() from pipeline.py to TypeScript,
+// keeping the same JSON schema so detection rules and content templates port.
+
+import { compass8, haversineKm, initialBearingDeg } from './geo';
+import type {
+    AirQuality,
+    Facts,
+    ForecastTrend,
+    PastTrends,
+    PressureFeature,
+    SurfaceFacts,
+    SynopticFacts,
+    UpperAir,
+} from './types';
+
+const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+const AIR_QUALITY_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
+
+// Regional MSL pressure grid for synoptic feature detection. ±4.5° box,
+// 1.5° spacing → 7×7 = 49 points (~165 km cells, fine for synoptic features).
+const GRID_RADIUS_DEG = 4.5;
+const GRID_STEP_DEG = 1.5;
+
+async function getJson(url: string): Promise<any> {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+    return r.json();
+}
+
+function fetchSurfaceAndHistory(lat: number, lon: number): Promise<any> {
+    const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        current: [
+            'temperature_2m', 'relative_humidity_2m', 'apparent_temperature',
+            'weather_code', 'surface_pressure', 'pressure_msl',
+            'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m',
+            'precipitation', 'cloud_cover',
+        ].join(','),
+        hourly: [
+            'temperature_2m', 'pressure_msl', 'wind_speed_10m',
+            'wind_direction_10m', 'precipitation', 'relative_humidity_2m',
+        ].join(','),
+        past_hours: '24',
+        forecast_hours: '24',
+        timezone: 'auto',
+    });
+    return getJson(`${FORECAST_URL}?${params}`);
+}
+
+function fetchUpperAir(lat: number, lon: number): Promise<any> {
+    const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        hourly: [
+            'geopotential_height_500hPa', 'temperature_500hPa',
+            'wind_speed_500hPa', 'wind_direction_500hPa',
+            'geopotential_height_850hPa', 'temperature_850hPa',
+            'wind_speed_850hPa', 'wind_direction_850hPa',
+            'wind_speed_250hPa', 'wind_direction_250hPa',
+        ].join(','),
+        forecast_hours: '1',
+        timezone: 'auto',
+    });
+    return getJson(`${FORECAST_URL}?${params}`);
+}
+
+function fetchPressureGrid(lat: number, lon: number): Promise<any> {
+    const n = Math.floor(GRID_RADIUS_DEG / GRID_STEP_DEG); // 3 → 7×7=49
+    const lats: number[] = [];
+    const lons: number[] = [];
+    for (let di = -n; di <= n; di++) {
+        for (let dj = -n; dj <= n; dj++) {
+            lats.push(Math.round((lat + di * GRID_STEP_DEG) * 1e4) / 1e4);
+            lons.push(Math.round((lon + dj * GRID_STEP_DEG) * 1e4) / 1e4);
+        }
+    }
+    const params = new URLSearchParams({
+        latitude: lats.join(','),
+        longitude: lons.join(','),
+        current: 'pressure_msl',
+        timezone: 'UTC',
+    });
+    return getJson(`${FORECAST_URL}?${params}`);
+}
+
+function fetchAirQuality(lat: number, lon: number): Promise<any> {
+    const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        current: 'pm2_5,pm10,european_aqi',
+    });
+    return getJson(`${AIR_QUALITY_URL}?${params}`);
+}
+
+function extractSurface(wx: any): SurfaceFacts {
+    const c = wx?.current ?? {};
+    const wd = c.wind_direction_10m;
+    return {
+        temperature_C: c.temperature_2m ?? null,
+        apparent_temperature_C: c.apparent_temperature ?? null,
+        humidity_pct: c.relative_humidity_2m ?? null,
+        weather_code: c.weather_code ?? null,
+        pressure_msl_hPa: c.pressure_msl ?? null,
+        pressure_surface_hPa: c.surface_pressure ?? null,
+        wind_speed_kmh: c.wind_speed_10m ?? null,
+        wind_gust_kmh: c.wind_gusts_10m ?? null,
+        wind_direction_deg: wd ?? null,
+        wind_compass: wd != null ? compass8(wd) : null,
+        cloud_cover_pct: c.cloud_cover ?? null,
+        precipitation_mm: c.precipitation ?? null,
+    };
+}
+
+function summarizeHistory(hourly: any): PastTrends {
+    const times: string[] = hourly?.time ?? [];
+    if (times.length < 25) {
+        return {
+            pressure_change_hPa: null,
+            pressure_tendency: 'steady',
+            temp_change_C: null,
+            wind_shift_deg: null,
+            precip_total_mm: null,
+        };
+    }
+    const nowIdx = 24;
+    const pressArr: (number | null)[] = (hourly.pressure_msl ?? []).slice(0, nowIdx + 1);
+    const prsValid = pressArr.filter((v): v is number => v != null);
+    const pchg =
+        prsValid.length >= 2 ? Math.round((prsValid[prsValid.length - 1] - prsValid[0]) * 10) / 10 : null;
+    const tNow = hourly.temperature_2m?.[nowIdx];
+    const tPast = hourly.temperature_2m?.[0];
+    const tchg = tNow != null && tPast != null ? Math.round((tNow - tPast) * 10) / 10 : null;
+    const wNow = hourly.wind_direction_10m?.[nowIdx];
+    const wPast = hourly.wind_direction_10m?.[0];
+    let wShift: number | null = null;
+    if (wNow != null && wPast != null) {
+        wShift = Math.round(((wNow - wPast + 540) % 360) - 180);
+    }
+    const precipArr: (number | null)[] = (hourly.precipitation ?? []).slice(0, nowIdx + 1);
+    const precipSum = precipArr.reduce<number>((s, v) => s + (v ?? 0), 0);
+    let tendency: 'rising' | 'falling' | 'steady' = 'steady';
+    if (pchg != null) {
+        if (pchg > 1) tendency = 'rising';
+        else if (pchg < -1) tendency = 'falling';
+    }
+    return {
+        pressure_change_hPa: pchg,
+        pressure_tendency: tendency,
+        temp_change_C: tchg,
+        wind_shift_deg: wShift,
+        precip_total_mm: Math.round(precipSum * 10) / 10,
+    };
+}
+
+function summarizeForecast(hourly: any): ForecastTrend {
+    const times: string[] = hourly?.time ?? [];
+    if (times.length < 25) {
+        return { temp_change_C: null, pressure_change_hPa: null, precip_total_mm: null };
+    }
+    const nowIdx = 24;
+    const endIdx = Math.min(nowIdx + 24, times.length - 1);
+    const tNow = hourly.temperature_2m?.[nowIdx];
+    const tEnd = hourly.temperature_2m?.[endIdx];
+    const pNow = hourly.pressure_msl?.[nowIdx];
+    const pEnd = hourly.pressure_msl?.[endIdx];
+    const precipArr: (number | null)[] = (hourly.precipitation ?? []).slice(nowIdx + 1, endIdx + 1);
+    const precipSum = precipArr.reduce<number>((s, v) => s + (v ?? 0), 0);
+    return {
+        temp_change_C: tNow != null && tEnd != null ? Math.round((tEnd - tNow) * 10) / 10 : null,
+        pressure_change_hPa: pNow != null && pEnd != null ? Math.round((pEnd - pNow) * 10) / 10 : null,
+        precip_total_mm: Math.round(precipSum * 10) / 10,
+    };
+}
+
+function extractUpperAir(ua: any): UpperAir {
+    const h = ua?.hourly ?? {};
+    const first = (k: string): number | null => {
+        const arr = h[k];
+        return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+    };
+    return {
+        '500hPa': {
+            geopotential_height_m: first('geopotential_height_500hPa'),
+            temperature_C: first('temperature_500hPa'),
+            wind_speed_kmh: first('wind_speed_500hPa'),
+            wind_direction_deg: first('wind_direction_500hPa'),
+        },
+        '850hPa': {
+            geopotential_height_m: first('geopotential_height_850hPa'),
+            temperature_C: first('temperature_850hPa'),
+            wind_speed_kmh: first('wind_speed_850hPa'),
+            wind_direction_deg: first('wind_direction_850hPa'),
+        },
+        '250hPa_jet': {
+            wind_speed_kmh: first('wind_speed_250hPa'),
+            wind_direction_deg: first('wind_direction_250hPa'),
+        },
+    };
+}
+
+function findSynopticFeatures(grid: any, centerLat: number, centerLon: number): SynopticFacts {
+    const points: Array<{ lat: number; lon: number; pressure: number }> = [];
+    const arr: any[] = Array.isArray(grid) ? grid : [grid];
+    for (const p of arr) {
+        const plat = p?.latitude;
+        const plon = p?.longitude;
+        const pressure = p?.current?.pressure_msl;
+        if (plat != null && plon != null && pressure != null) {
+            points.push({ lat: plat, lon: plon, pressure });
+        }
+    }
+    if (points.length === 0) {
+        // Construct a sentinel so consumers can detect the broken case.
+        const sentinel: PressureFeature = {
+            pressure_hPa: NaN,
+            lat: centerLat,
+            lon: centerLon,
+            distance_km: 0,
+            bearing_deg: 0,
+            compass: 'N',
+        };
+        return {
+            nearest_low: sentinel,
+            nearest_high: sentinel,
+            grid_msl_pressure_hPa_min_max: [NaN, NaN],
+            grid_points: 0,
+        };
+    }
+    const low = points.reduce((a, b) => (a.pressure < b.pressure ? a : b));
+    const high = points.reduce((a, b) => (a.pressure > b.pressure ? a : b));
+
+    const feature = (pt: typeof low): PressureFeature => {
+        const b = initialBearingDeg(centerLat, centerLon, pt.lat, pt.lon);
+        return {
+            pressure_hPa: Math.round(pt.pressure * 10) / 10,
+            lat: pt.lat,
+            lon: pt.lon,
+            distance_km: Math.round(haversineKm(centerLat, centerLon, pt.lat, pt.lon)),
+            bearing_deg: Math.round(b),
+            compass: compass8(b),
+        };
+    };
+
+    return {
+        nearest_low: feature(low),
+        nearest_high: feature(high),
+        grid_msl_pressure_hPa_min_max: [
+            Math.round(low.pressure * 10) / 10,
+            Math.round(high.pressure * 10) / 10,
+        ],
+        grid_points: points.length,
+    };
+}
+
+function extractAirQuality(aq: any): AirQuality {
+    const c = aq?.current ?? {};
+    return {
+        pm2_5: c.pm2_5 ?? null,
+        pm10: c.pm10 ?? null,
+        european_aqi: c.european_aqi ?? null,
+    };
+}
+
+export async function fetchFacts(lat: number, lon: number): Promise<Facts> {
+    const [wx, ua, grid, aq] = await Promise.all([
+        fetchSurfaceAndHistory(lat, lon),
+        fetchUpperAir(lat, lon),
+        fetchPressureGrid(lat, lon),
+        fetchAirQuality(lat, lon),
+    ]);
+    return {
+        location: { lat, lon },
+        generated_at: new Date().toISOString(),
+        surface: extractSurface(wx),
+        past_24h: summarizeHistory(wx.hourly ?? {}),
+        forecast_24h: summarizeForecast(wx.hourly ?? {}),
+        upper_air: extractUpperAir(ua),
+        synoptic: findSynopticFeatures(grid, lat, lon),
+        air_quality: extractAirQuality(aq),
+    };
+}
