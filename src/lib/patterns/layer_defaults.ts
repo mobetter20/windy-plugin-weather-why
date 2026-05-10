@@ -26,7 +26,7 @@ const wind_default: DefaultFn = (f, _ctx) => {
             ? `Surface wind here is about ${speed} km/h from the ${compass.toLowerCase()}.`
             : 'Surface wind here is light.';
     return {
-        title: 'Wind right here',
+        title: "What you're seeing",
         mechanism:
             `Wind is air moving from higher pressure toward lower pressure; the arrows show ` +
             `direction and the colors show speed. ${speedPhrase} The pattern around you isn't ` +
@@ -55,7 +55,7 @@ const pressure_default: DefaultFn = (f, _ctx) => {
             ? `Pressure here is about ${Math.round(p)} hPa — ${p > 1015 ? 'a touch above' : p < 1010 ? 'a touch below' : 'right around'} the standard atmosphere of 1013 hPa.`
             : 'Local pressure data unavailable.';
     return {
-        title: 'Pressure right here',
+        title: "What you're seeing",
         mechanism:
             `${pressurePhrase} The lines (isobars) trace equal-pressure values; closed loops are ` +
             `highs and lows; tightly-packed lines mean stronger wind. Air flows from higher pressure ` +
@@ -83,7 +83,7 @@ const rain_default: DefaultFn = (f, _ctx) => {
             ? `About ${fc.toFixed(1)} mm of rain is forecast here in the next 24 hours.`
             : 'No significant rain forecast here in the next 24 hours.';
     return {
-        title: 'Rain layer right here',
+        title: "What you're seeing",
         mechanism:
             `${expectedPhrase} Rain forms where air rises — along fronts, above warm surfaces, ` +
             `against terrain. Where you see a colored band on this layer, there's almost always ` +
@@ -111,7 +111,7 @@ const temp_default: DefaultFn = (f, _ctx) => {
             ? `Surface temperature here is about ${Math.round(t)}°C.`
             : 'Local temperature data unavailable.';
     return {
-        title: 'Temperature right here',
+        title: "What you're seeing",
         mechanism:
             `${tempPhrase} The colors smoothly grade from cold to warm, but real-world ` +
             `boundaries — fronts, coasts, mountains — produce sharper transitions. Near coasts ` +
@@ -141,7 +141,7 @@ const satellite_default: DefaultFn = (f, _ctx) => {
             ? `Local cloud cover is about ${Math.round(c)}%.`
             : 'Local cloud-cover data unavailable.';
     return {
-        title: 'Satellite right here',
+        title: "What you're seeing",
         mechanism:
             `The satellite layer shows actual cloud structure as observed from space — not a ` +
             `forecast. Brighter, whiter areas are thicker or higher clouds; darker patches show ` +

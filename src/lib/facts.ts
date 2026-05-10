@@ -22,13 +22,24 @@ const AIR_QUALITY_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 const GRID_RADIUS_DEG = 4.5;
 const GRID_STEP_DEG = 1.5;
 
-async function getJson(url: string): Promise<any> {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+async function getJson(url: string, signal?: AbortSignal): Promise<any> {
+    const r = await fetch(url, { signal });
+    if (!r.ok) {
+        // Read the body so the diagnostic detail (often Open-Meteo's reason
+        // for the rejection) makes it into the thrown error.
+        let detail = '';
+        try {
+            const body = await r.text();
+            if (body) detail = ` — ${body.slice(0, 300)}`;
+        } catch {
+            // ignore — the status alone is at least informative
+        }
+        throw new Error(`HTTP ${r.status}${detail}`);
+    }
     return r.json();
 }
 
-function fetchSurfaceAndHistory(lat: number, lon: number): Promise<any> {
+function fetchSurfaceAndHistory(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const params = new URLSearchParams({
         latitude: String(lat),
         longitude: String(lon),
@@ -47,10 +58,10 @@ function fetchSurfaceAndHistory(lat: number, lon: number): Promise<any> {
         forecast_hours: '24',
         timezone: 'auto',
     });
-    return getJson(`${FORECAST_URL}?${params}`);
+    return getJson(`${FORECAST_URL}?${params}`, signal);
 }
 
-function fetchUpperAir(lat: number, lon: number): Promise<any> {
+function fetchUpperAir(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const params = new URLSearchParams({
         latitude: String(lat),
         longitude: String(lon),
@@ -64,10 +75,10 @@ function fetchUpperAir(lat: number, lon: number): Promise<any> {
         forecast_hours: '1',
         timezone: 'auto',
     });
-    return getJson(`${FORECAST_URL}?${params}`);
+    return getJson(`${FORECAST_URL}?${params}`, signal);
 }
 
-function fetchPressureGrid(lat: number, lon: number): Promise<any> {
+function fetchPressureGrid(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const n = Math.floor(GRID_RADIUS_DEG / GRID_STEP_DEG); // 3 → 7×7=49
     const lats: number[] = [];
     const lons: number[] = [];
@@ -83,16 +94,16 @@ function fetchPressureGrid(lat: number, lon: number): Promise<any> {
         current: 'pressure_msl',
         timezone: 'UTC',
     });
-    return getJson(`${FORECAST_URL}?${params}`);
+    return getJson(`${FORECAST_URL}?${params}`, signal);
 }
 
-function fetchAirQuality(lat: number, lon: number): Promise<any> {
+function fetchAirQuality(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const params = new URLSearchParams({
         latitude: String(lat),
         longitude: String(lon),
         current: 'pm2_5,pm10,european_aqi',
     });
-    return getJson(`${AIR_QUALITY_URL}?${params}`);
+    return getJson(`${AIR_QUALITY_URL}?${params}`, signal);
 }
 
 function extractSurface(wx: any): SurfaceFacts {
@@ -272,12 +283,12 @@ function extractInstability(wx: any): Instability {
     return { cape_jkg: typeof value === 'number' ? value : null };
 }
 
-export async function fetchFacts(lat: number, lon: number): Promise<Facts> {
+export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal): Promise<Facts> {
     const [wx, ua, grid, aq] = await Promise.all([
-        fetchSurfaceAndHistory(lat, lon),
-        fetchUpperAir(lat, lon),
-        fetchPressureGrid(lat, lon),
-        fetchAirQuality(lat, lon),
+        fetchSurfaceAndHistory(lat, lon, signal),
+        fetchUpperAir(lat, lon, signal),
+        fetchPressureGrid(lat, lon, signal),
+        fetchAirQuality(lat, lon, signal),
     ]);
     return {
         location: { lat, lon },

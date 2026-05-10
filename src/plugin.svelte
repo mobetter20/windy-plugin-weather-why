@@ -13,7 +13,15 @@
     {#if error}
         <div class="ww-state ww-state--error">
             <p>Couldn't read the sky just now.</p>
-            <p class="ww-error-detail">{error}</p>
+            <p class="ww-error-help">
+                A weather data request didn't come back. Open-Meteo (the source) sometimes
+                rate-limits rapid clicks on the free tier. Try clicking somewhere else, or
+                wait a moment and try again.
+            </p>
+            <details class="ww-error-details">
+                <summary>technical detail</summary>
+                <pre>{error}</pre>
+            </details>
         </div>
     {:else if isLoading}
         <div class="ww-state ww-state--loading">
@@ -63,12 +71,14 @@
                 </p>
             {:else}
                 <p>
-                    No patterns shipped for the {layerLabel(currentLayer)} layer yet.
+                    The {layerLabel(currentLayer)} layer isn't covered yet.
                 </p>
                 <p class="ww-fallback-detail">
-                    Phase 1d ships one pattern: <strong>wind curling around a low</strong>, on the
-                    <em>Wind</em> layer. Switch to the Wind layer (top of map) and click somewhere
-                    with a visible swirl. 12 more patterns queued for upcoming phases.
+                    I'll know what to say about waves, dust, air quality, and the rest in
+                    upcoming phases. For now the covered layers are <strong>Wind</strong>,
+                    <strong>Pressure</strong>, <strong>Rain</strong>, <strong>Radar</strong>,
+                    <strong>Temperature</strong>, <strong>Satellite</strong>, and <strong>CAPE</strong> —
+                    switch to one of those and try again.
                 </p>
             {/if}
         </div>
@@ -121,8 +131,15 @@
         | { id: string; location: LatLon; layer: WindyOverlay; card: PatternCard }
         | null = null;
     let visualCleanup: (() => void) | null = null;
+    let inflight: AbortController | null = null;
 
     async function runFlow(loc: LatLon) {
+        // Abort any prior in-flight fetch — rapid clicks shouldn't pile up
+        // (and can otherwise spike Open-Meteo's free-tier rate limit).
+        if (inflight) {
+            inflight.abort();
+            inflight = null;
+        }
         if (visualCleanup) {
             visualCleanup();
             visualCleanup = null;
@@ -138,8 +155,11 @@
         const level = (store.get('level') as string) ?? 'surface';
         const ctx: DetectContext = { activeLayer: currentLayer, level };
 
+        const ac = new AbortController();
+        inflight = ac;
+
         try {
-            const f = await fetchFacts(loc.lat, loc.lon);
+            const f = await fetchFacts(loc.lat, loc.lon, ac.signal);
             facts = f;
 
             // 1. Try a specific pattern.
@@ -170,8 +190,11 @@
             }
             setUrl(name, { lat: loc.lat, lon: loc.lon });
         } catch (e: any) {
+            // Aborts (from a newer click) are expected — silently swallow them.
+            if (e?.name === 'AbortError') return;
             error = e?.message ?? String(e);
         } finally {
+            if (inflight === ac) inflight = null;
             isLoading = false;
         }
     }
@@ -223,6 +246,10 @@
     });
 
     onDestroy(() => {
+        if (inflight) {
+            inflight.abort();
+            inflight = null;
+        }
         if (visualCleanup) {
             visualCleanup();
             visualCleanup = null;
@@ -399,13 +426,39 @@
 
     .ww-state--loading p { font-style: italic; opacity: 0.65; }
 
-    .ww-state--error .ww-error-detail {
-        font-size: 0.78em;
-        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-        background: rgba(127, 127, 127, 0.1);
-        padding: 0.45em 0.65em;
-        border-radius: 0.35em;
-        opacity: 0.75;
+    .ww-state--error {
+        .ww-error-help {
+            font-size: 0.92em;
+            margin-bottom: 0.85em;
+            opacity: 0.8;
+        }
+
+        .ww-error-details {
+            margin-top: 0.4em;
+            font-size: 0.8em;
+            opacity: 0.55;
+
+            summary {
+                cursor: pointer;
+                user-select: none;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                font-size: 0.85em;
+            }
+
+            pre {
+                margin: 0.55em 0 0;
+                padding: 0.5em 0.7em;
+                background: rgba(127, 127, 127, 0.1);
+                border-radius: 0.35em;
+                font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+                font-size: 0.85em;
+                line-height: 1.45;
+                white-space: pre-wrap;
+                word-break: break-all;
+                overflow-x: auto;
+            }
+        }
     }
 
     .ww-state--fallback .ww-fallback-detail {
