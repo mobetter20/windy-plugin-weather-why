@@ -16,11 +16,13 @@ import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types
 
 import cape_no_storms from './cape_no_storms';
 import cyclonic_inflow from './cyclonic_inflow';
+import haze_dust_plume from './haze_dust_plume';
 import jet_stream from './jet_stream';
 import radar_satellite_mismatch from './radar_satellite_mismatch';
 import rain_in_a_line from './rain_in_a_line';
 import sharp_temperature_line from './sharp_temperature_line';
 import tight_gradient from './tight_gradient';
+import wind_gust_factor from './wind_gust_factor';
 
 const MODULES: PatternModule<any>[] = [
     cyclonic_inflow,
@@ -30,6 +32,8 @@ const MODULES: PatternModule<any>[] = [
     cape_no_storms,
     radar_satellite_mismatch,
     sharp_temperature_line,
+    haze_dust_plume,
+    wind_gust_factor,
 ];
 
 export interface DispatchResult {
@@ -74,6 +78,8 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
     { id: 'radar_satellite_mismatch', title: 'Clouds without rain (radar vs satellite)',  layerHint: 'Radar or Satellite layer' },
     { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',        layerHint: 'Temperature layer' },
+    { id: 'haze_dust_plume',          title: 'Haze or dust plume',                       layerHint: 'Air quality layer (cAQI, PM2.5, PM10, dust)' },
+    { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',     layerHint: 'Gust layer' },
 ];
 
 export { MODULES };

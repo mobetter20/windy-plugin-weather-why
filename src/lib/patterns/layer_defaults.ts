@@ -9,10 +9,10 @@
 // / remember) so the UI doesn't need a special render path. Same tone (B,
 // substantive, no folk-philosophy).
 //
-// Coverage in v1: wind (also gust), pressure, rain, temp, satellite, radar.
-// Other layers (cape, waves, dust, cAQI, clouds, etc.) fall through to the
-// "this layer not yet supported" message — patterns ship for those before
-// we owe them a default.
+// Coverage in v1: wind (also gust), pressure, rain, temp, satellite, radar,
+// cape, waves, and air-quality layers (cAQI, pm2p5, pm10, dust).
+// Other layers (clouds, cloudtop, visibility) fall through to the
+// "this layer not yet supported" message.
 
 import type { DetectContext, Facts, PatternCard, WindyOverlay } from '../types';
 
@@ -162,6 +162,88 @@ const satellite_default: DefaultFn = (f, _ctx) => {
     };
 };
 
+const cape_default: DefaultFn = (f, _ctx) => {
+    const cape = f.instability.cape_jkg;
+    const capePhrase =
+        cape != null
+            ? `CAPE here is ${Math.round(cape)} J/kg — ${cape < 300 ? 'very low, indicating a stable atmosphere' : 'low enough that thunderstorm development is unlikely'}.`
+            : 'Local CAPE data is unavailable here.';
+    return {
+        title: "What you're seeing",
+        mechanism:
+            `${capePhrase} CAPE (Convective Available Potential Energy) is the fuel a storm needs: ` +
+            `energy a rising air parcel could tap if pushed high enough to escape its environment. ` +
+            `Low CAPE means even a trigger — a front, sea breeze, or terrain — won't produce ` +
+            `much lift. The atmosphere just isn't loaded.`,
+        checkNext: [
+            {
+                label: 'Toggle Wind: look for a front or convergence line that could act as a trigger',
+                overlay: 'wind',
+            },
+            {
+                label: "Toggle Radar: confirm the sky is quiet",
+                overlay: 'radar',
+            },
+        ],
+        remember:
+            'CAPE peaks in the afternoon when surface heating is strongest. Re-check later ' +
+            'in the day — values can double between morning and early afternoon.',
+    };
+};
+
+const waves_default: DefaultFn = (_f, _ctx) => {
+    return {
+        title: "What you're seeing",
+        mechanism:
+            `This layer shows significant wave height — the average of the highest third of waves at each point. ` +
+            `It combines local wind chop with swell arriving from distant storms, sometimes thousands of kilometres away. ` +
+            `Wave data isn't available from Open-Meteo's free tier, so no local value is shown here.`,
+        checkNext: [
+            {
+                label: 'Toggle Wind: the wave pattern follows the wind trajectory nearby and upwind',
+                overlay: 'wind',
+            },
+            {
+                label: 'Toggle Swell: see the long-period swell component separately',
+                overlay: 'swell1',
+            },
+        ],
+        remember:
+            'Significant wave height is a statistical average — individual waves can reach roughly ' +
+            'twice that value. Wave models are less reliable than wind models.',
+    };
+};
+
+const air_quality_default: DefaultFn = (f, _ctx) => {
+    const pm2 = f.air_quality.pm2_5;
+    const pm10 = f.air_quality.pm10;
+    const pm2Str = pm2 != null ? `${Math.round(pm2)} µg/m³` : null;
+    const pm10Str = pm10 != null ? `${Math.round(pm10)} µg/m³` : null;
+
+    const readingPhrase =
+        pm2Str != null
+            ? `PM2.5 here is ${pm2Str}${pm10Str != null ? ` and PM10 is ${pm10Str}` : ''} — below the levels that flag a plume.`
+            : 'Local particulate data is unavailable here.';
+
+    return {
+        title: "What you're seeing",
+        mechanism:
+            `${readingPhrase} These layers show airborne particulate concentration, ` +
+            `modeled from meteorology and emission inventories. PM2.5 is fine particles small ` +
+            `enough to penetrate the lungs; PM10 adds coarser dust and pollen. ` +
+            `When a plume is present upwind, concentrations spike along the transport path.`,
+        checkNext: [
+            {
+                label: 'Toggle Wind: the air-quality pattern here follows the low-level wind trajectory',
+                overlay: 'wind',
+            },
+        ],
+        remember:
+            'These layers are model output, not sensor readings. Actual conditions may differ — ' +
+            'especially near local sources like wildfires or industrial sites.',
+    };
+};
+
 const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     wind: wind_default,
     gust: wind_default,         // shares the wind explanation
@@ -171,6 +253,14 @@ const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     radar: rain_default,        // close enough for v0.1; radar-specific framing later
     temp: temp_default,
     satellite: satellite_default,
+    cape: cape_default,
+    waves: waves_default,
+    swell1: waves_default,      // same explanation for all swell layers
+    swell2: waves_default,
+    cAQI: air_quality_default,
+    pm2p5: air_quality_default,
+    pm10: air_quality_default,
+    dust: air_quality_default,
 };
 
 export function getLayerDefault(
