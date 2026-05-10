@@ -1,49 +1,101 @@
 # windy-plugin-weather-why
 
-The Windy plugin form of [weather-why](../README.md). Lives in this subdirectory of the parent project.
+A Windy.com plugin that turns the weather on the map into a moment of genuine understanding. Click any spot on any Windy layer (wind, rain, pressure, temperature, satellite, CAPE, gust, AQ, dust, waves, radar, clouds). The plugin recognises the visual pattern you're looking at and explains it in a four-beat card:
 
-## Status
+> **Title** → 2–3 sentence **mechanism** → **Check next:** clickable cross-layer toggles → **Remember:** model-vs-observation caveat
 
-Phase 1b — scaffold only. Hello-world panel renders in Windy's dev mode. Phenomenon detection, visual annotations, and curated content come in 1c+.
+The "Check next" buttons actually flip Windy's layer so you can confirm the explanation in real time. All explanation text is hand-written, parameterised for live data, and verified against NOAA / AMS / peer-reviewed meteorology sources.
+
+## What it recognises
+
+13 patterns + a "What you're seeing" fallback on covered layers:
+
+| Pattern | Trigger layer |
+|---|---|
+| Cyclonic inflow around a low (+ tropical-cyclone override for sub-985-hPa systems in the tropics) | Wind (surface) |
+| Strong wind in a tight pressure gradient | Wind |
+| Rain in a line (front / squall) | Rain, RainAccu, Radar |
+| CAPE present but the sky is quiet (cap / CIN) | CAPE |
+| Clouds without rain (virga, cirrus, cloud shield) | Radar, Satellite, Clouds, Cloudtop |
+| Sharp temperature line (front signature) | Temperature |
+| Jet stream | Wind 250h / 300h |
+| Haze / dust plume (regional transport) | cAQI, PM2.5, PM10, Dust |
+| High gust factor | Gust |
+| Orographic rain & rain shadow | Rain (elevated terrain) |
+| Swell vs wind waves (distant-storm energy) | Waves, Swell |
+| Sea breeze (afternoon onshore flow) | Wind (coastal) |
+
+When no specific pattern fires on a covered layer, a "What you're seeing" card explains the layer + local data point.
+
+## Tech
+
+- Pure client-side. Svelte + TypeScript. No backend.
+- Data: [Open-Meteo](https://open-meteo.com/) (forecast, upper air, marine, air quality). Keyless, free.
+- Build size: ~52 KB minified.
 
 ## Dev loop
 
 ```bash
-# From this directory (one-time)
-npm install
-
-# Hot-reloading dev server
-npm start          # serves https://localhost:9999/plugin.js
+npm install                       # one-time
+npm start                         # serves https://localhost:9999/plugin.js
 ```
 
 Then:
 
-1. Open `https://localhost:9999/plugin.js` once in your browser to accept the self-signed cert.
-2. Go to **https://www.windy.com/dev** (a.k.a. `windy.com/developer-mode`).
-3. Paste `https://localhost:9999/plugin.js` in the "Plugin URL" field. The plugin's right-hand pane should open in Windy.
-4. Edits to `src/plugin.svelte` / `src/pluginConfig.ts` hot-reload — no restart needed.
+1. Open `https://localhost:9999/plugin.js` once in a browser to accept the self-signed cert.
+2. Visit [`https://www.windy.com/dev`](https://www.windy.com/dev).
+3. Paste `https://localhost:9999/plugin.js` in the "Plugin URL" field. The right-hand pane opens.
+4. Edits to `src/plugin.svelte`, `src/pluginConfig.ts`, or anything under `src/lib/` hot-reload.
 
-If you hit CORS friction loading from `localhost:9999` into `windy.com/dev`, add CORS headers to the Rollup dev server config (community forum has examples).
+CORS friction loading `localhost:9999` into `windy.com/dev`? Add CORS headers to the Rollup dev server config (community forum has working examples).
 
-If `npm install` fails with `EACCES` errors in `~/.npm/_cacache/`, your npm cache has permission issues from a past sudo invocation. Either fix with `sudo chown -R $(whoami) ~/.npm`, or use a fresh cache: `npm install --cache /tmp/npm-cache-weather-why`.
+If `npm install` fails with `EACCES` on `~/.npm/_cacache/`: fix with `sudo chown -R $(whoami) ~/.npm`, or use a fresh cache: `npm install --cache /tmp/npm-cache`.
 
 ## Build for distribution
 
 ```bash
-npm run build      # outputs dist/plugin.min.js
+npm run build                     # outputs dist/plugin.{js,min.js}
 ```
 
-`private: true` is set in [`src/pluginConfig.ts`](src/pluginConfig.ts) — distributable via personal share URL only, never appears in Windy's gallery. Flip to `false` and run the `publish-plugin` GitHub Action with `WINDY_API_KEY` to submit for public review.
+## Architecture
 
-## Files
+```
+src/
+├── plugin.svelte                 # main UI: click → fetch → detect → render
+├── pluginConfig.ts               # plugin metadata
+└── lib/
+    ├── types.ts                  # Facts schema, PatternModule contract, WindyOverlay union
+    ├── geo.ts                    # haversine, bearing, compass8
+    ├── facts.ts                  # 5 parallel Open-Meteo fetches (forecast, upper-air,
+    │                             #   49-point MSL-pressure grid, air quality, marine)
+    └── patterns/
+        ├── index.ts              # MODULES registry, pickPattern dispatcher,
+        │                         #   CATALOG, getLayerDefault
+        ├── cyclonic_inflow.ts    # + tropical-cyclone override
+        ├── tight_gradient.ts
+        ├── rain_in_a_line.ts
+        ├── cape_no_storms.ts
+        ├── radar_satellite_mismatch.ts
+        ├── sharp_temperature_line.ts
+        ├── jet_stream.ts
+        ├── haze_dust_plume.ts
+        ├── wind_gust_factor.ts
+        ├── orographic_rain.ts
+        ├── swell_vs_wind.ts
+        ├── sea_breeze.ts
+        └── layer_defaults.ts     # "What you're seeing" cards per layer
+```
 
-- `src/pluginConfig.ts` — plugin metadata (name, icon, UI mode, router path)
-- `src/plugin.svelte` — main UI + logic (HTML + Less + TS in one Svelte file)
-- `src/screenshot.jpg` — gallery thumbnail (replace before going public)
-- `package.json`, `rollup.config.js`, `svelte.config.js` — build pipeline (from windycom/windy-plugin-template v5)
-- `examples/` — reference plugins from the template (boat tracker, foehn chart, weather picker, etc.) — read-only references
-- `declarations/` — TypeScript declarations for `@windy/*` modules
+### Click resolution
+
+1. **Pattern match** — `pickPattern(activeLayer, facts)` runs every module whose `appliesToLayers` includes the current overlay; highest-confidence match wins.
+2. **Layer default** — if no pattern fires, `getLayerDefault(layer, facts)` renders a "What you're seeing" card explaining the layer.
+3. **Layer not yet supported** — UI fallback names which layers ARE covered.
+
+Each pattern module exports `detect(facts, ctx)`, `visual(map, facts, params)` (returns a cleanup function; currently noop everywhere — Windy's own layers carry the visualisation), and `content(facts, params)` returning a `PatternCard` (title / mechanism / checkNext / remember).
 
 ## License
 
-The plugin code in this directory is currently `private: true` in `pluginConfig.ts` — your code stays yours. If we ever submit to the Windy gallery, it must be open source AND we grant Windy a perpetual sublicensable license. Decide carefully before flipping `private` to `false`.
+MIT — see [LICENSE](LICENSE).
+
+Publishing to Windy's plugin gallery additionally grants Windy a perpetual sublicensable license to the plugin source (standard for the plugin gallery). Currently `private: true` in [`src/pluginConfig.ts`](src/pluginConfig.ts) — distributable via personal share URL only until that flag is flipped and the publish action is run.
