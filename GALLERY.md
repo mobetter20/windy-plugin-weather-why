@@ -15,43 +15,35 @@ Currently set in [`src/pluginConfig.ts`](src/pluginConfig.ts):
 ## Community-thread post (long — for the [Windy Plugins community thread](https://community.windy.com/topic/31066/list-of-finished-windy-plugins-v42) when submitting for review)
 
 ```markdown
-# weather-why: a "read the live atmosphere" plugin
+# Weather Why
 
-Most weather tools forecast. This one *explains*. Click any spot on any Windy layer and weather-why recognises the visual pattern you're looking at — a wind swirl around a low, a sharp temperature line where a front passed, clouds on satellite that show no rain on radar — and gives you a short card:
+Click any spot on any Windy layer. The plugin recognises the visual pattern you're looking at — a wind swirl, a rain band, a temperature line, a jet ribbon — and explains it in a short card. The "Check next" buttons toggle a related layer so you can confirm what you're seeing.
 
-- **Title:** what you're looking at
-- **Mechanism:** 2-3 sentences on the science
-- **Check next:** clickable buttons that toggle a related Windy layer so you can confirm what you're seeing
-- **Remember:** one-sentence caveat on model-vs-observation
-
-Built for curious adults who want to *read* the live atmosphere, not be forecast at.
+13 patterns covered. All explanation text is hand-written and verified against NOAA / AMS / peer-reviewed sources.
 
 ## What it recognises
 
-13 patterns + a "What you're seeing" fallback on most-clicked layers:
-
 | Pattern | Trigger layer |
 |---|---|
-| Cyclonic inflow around a low (with tropical-cyclone override for sub-985-hPa systems in the tropics) | Wind (surface) |
+| Cyclonic inflow around a low (+ tropical-cyclone override for sub-985-hPa systems in the tropics) | Wind (surface) |
 | Strong wind in a tight pressure gradient | Wind |
 | Rain in a line (front / squall) | Rain, Radar |
 | CAPE present but the sky is quiet (cap / CIN) | CAPE |
 | Clouds without rain (virga, cirrus, cloud shield) | Radar, Satellite, Clouds |
 | Sharp temperature line (front signature) | Temperature |
-| Jet stream | Wind 250h/300h |
+| Jet stream | Wind 250h / 300h |
 | Haze / dust plume (regional transport) | cAQI, PM2.5, PM10, Dust |
 | High gust factor | Gust |
 | Orographic rain & rain shadow | Rain (elevated terrain) |
 | Swell vs wind waves (distant-storm energy) | Waves, Swell |
-| Sea breeze (afternoon onshore flow) | Wind, coastal |
+| Sea breeze (afternoon onshore flow) | Wind (coastal) |
 
-When no specific pattern fires on a covered layer, a "What you're seeing" card explains the layer and the local data point, so every click on a major layer produces something.
+On covered layers without a specific match, a "What you're seeing" card explains the layer + local data point — so every click on a major layer produces something.
 
 ## Tech
 
-- Pure client-side: Svelte + TypeScript, no backend
-- Data sources: Open-Meteo (forecast, upper air, marine, air-quality) — keyless, free
-- All explanation text is hand-written and verified against NOAA / AMS / peer-reviewed sources — **no LLM at runtime**
+- Pure client-side. Svelte + TypeScript. No backend.
+- Data: Open-Meteo (forecast, upper air, marine, air quality). Keyless, free.
 - Build size: ~52 KB minified
 - License: MIT
 - Source: https://github.com/[REPO_PATH]

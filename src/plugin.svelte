@@ -4,11 +4,12 @@
 
 <section class="plugin__content ww-content">
     <div
-        class="plugin__title plugin__title--chevron-back"
+        class="plugin__title plugin__title--chevron-back ww-header"
         on:click={() => bcast.emit('rqstOpen', 'menu')}
     >
-        {title}
+        <span class="ww-header-mark">WEATHER · WHY</span>
     </div>
+    <div class="ww-header-rule"></div>
 
     {#if error}
         <div class="ww-state ww-state--error">
@@ -84,8 +85,7 @@
         </div>
     {:else}
         <div class="ww-state ww-state--intro">
-            <h2>Click anywhere on the map.</h2>
-            <p>I'll read what you're looking at on the active layer and explain the pattern.</p>
+            <p class="ww-intro-instruction"><em>click any spot on any layer</em></p>
             <div class="ww-intro-hint">
                 <div class="ww-intro-hint-label">Patterns I recognise so far:</div>
                 <ul>
@@ -264,17 +264,36 @@
     // in light AND dark mode). For muting we use `opacity`. Backgrounds use
     // `rgba(127,127,127,X)` so they show as a faint tint over either theme.
 
+    // ---------- Header (replaces default plugin__title styling) ----------
+
+    .ww-header {
+        // Selector specificity beats Windy's own .plugin__title rules
+        // without using !important.
+        &.plugin__title {
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    .ww-header-mark {
+        font-size: 0.98em;
+        font-weight: 500;
+        letter-spacing: 0.22em;       // wide tracking for the small-caps feel
+        text-transform: uppercase;     // belt-and-braces in case the title
+                                       // string ever changes case
+        opacity: 0.92;
+    }
+
+    .ww-header-rule {
+        height: 1px;
+        margin: 0.55em 0 1.1em;
+        background: rgba(127, 127, 127, 0.22);
+    }
+
     // ---------- Shared building blocks ----------
 
     .ww-state, .ww-card {
-        padding: 1em 0 1.25em;
-    }
-
-    h2 { /* used by intro state */
-        margin: 0 0 0.5em;
-        font-size: 1.15em;
-        font-weight: 600;
-        line-height: 1.35;
+        padding: 0.25em 0 1.25em;     // tighter top now that the rule provides spacing
     }
 
     .ww-state p, .ww-card-mechanism {
@@ -385,7 +404,15 @@
         opacity: 0.65;
     }
 
-    // ---------- Intro hint box ----------
+    // ---------- Intro: instruction + patterns hint box ----------
+
+    .ww-intro-instruction {
+        margin: 0 0 1em;
+        font-size: 0.95em;
+        opacity: 0.6;
+
+        em { font-style: italic; }
+    }
 
     .ww-state--intro .ww-intro-hint {
         margin-top: 0.85em;
