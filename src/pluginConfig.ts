@@ -12,7 +12,7 @@ const config: ExternalPluginConfig = {
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
     routerPath: '/weather-why/:lat?/:lon?',
-    private: true,
+    private: false,
     // Plugin receives map clicks while open — this is the core interaction.
     listenToSingleclick: true,
     // Right-click on the map adds a "weather-why" item that opens the plugin

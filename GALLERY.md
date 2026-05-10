@@ -46,7 +46,7 @@ On covered layers without a specific match, a "What you're seeing" card explains
 - Data: Open-Meteo (forecast, upper air, marine, air quality). Keyless, free.
 - Build size: ~52 KB minified
 - License: MIT
-- Source: https://github.com/[REPO_PATH]
+- Source: https://github.com/mobetter20/windy-plugin-weather-why
 
 Feedback welcome. If you click somewhere and the card feels wrong or misses the obvious story, please open an issue.
 ```
