@@ -204,135 +204,84 @@
 </script>
 
 <style lang="less">
-    .ww-content {
-        font-family:
-            -apple-system,
-            system-ui,
-            'SF Pro Text',
-            'Helvetica Neue',
-            sans-serif;
+    // All colors/spacing chosen to inherit from Windy's theme. We never set
+    // explicit foreground colors — text inherits Windy's primary color (works
+    // in light AND dark mode). For muting we use `opacity`. Backgrounds use
+    // `rgba(127,127,127,X)` so they show as a faint tint over either theme.
+
+    // ---------- Shared building blocks ----------
+
+    .ww-state, .ww-card {
+        padding: 1em 0 1.25em;
     }
 
-    // ---------- States: intro / loading / error / fallback ----------
-
-    .ww-state {
-        padding: 1.25em 0 1em;
-
-        h2 {
-            margin: 0 0 0.5em;
-            font-size: 1.15em;
-            font-weight: 600;
-            letter-spacing: -0.005em;
-        }
-
-        p {
-            margin: 0 0 0.55em;
-            line-height: 1.55;
-            color: #5a5a55;
-            font-size: 0.95em;
-        }
-
-        &--intro {
-            .ww-intro-hint {
-                margin-top: 1em;
-                padding: 0.7em 0.9em;
-                background: rgba(180, 165, 130, 0.16);
-                border-radius: 0.45em;
-                font-size: 0.9em;
-                color: #5a4a30;
-                line-height: 1.55;
-
-                :global(strong) { color: #2a2a26; }
-                :global(em) { font-style: italic; color: #2a4a6e; font-weight: 500; }
-            }
-        }
-
-        &--loading p {
-            color: #888884;
-            font-style: italic;
-        }
-
-        &--error .ww-error-detail {
-            font-size: 0.78em;
-            font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-            background: #f5f1e8;
-            padding: 0.4em 0.6em;
-            border-radius: 0.3em;
-            color: #888;
-        }
-
-        &--fallback .ww-fallback-detail {
-            margin-top: 0.6em;
-            font-size: 0.88em;
-            color: #888884;
-            line-height: 1.55;
-
-            :global(strong) { color: #2a2a26; }
-            :global(em) { font-style: italic; color: #2a4a6e; }
-        }
+    h2 { /* used by intro state */
+        margin: 0 0 0.5em;
+        font-size: 1.15em;
+        font-weight: 600;
+        line-height: 1.35;
     }
 
-    .ww-coords {
+    .ww-state p, .ww-card-mechanism {
+        line-height: 1.6;
+        margin: 0 0 0.7em;
+    }
+
+    .ww-state p {
+        font-size: 0.95em;
+    }
+
+    // ---------- Meta strip + section labels (faint uppercase) ----------
+
+    .ww-meta, .ww-coords, .ww-section-label {
         font-size: 0.7em;
-        color: #888884;
-        margin-bottom: 0.45em;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-feature-settings: 'tnum';
+        opacity: 0.55;
+    }
+
+    .ww-meta {
+        margin-bottom: 0.7em;
+
+        .ww-meta-sep { margin: 0 0.35em; opacity: 0.5; }
+        .ww-meta-layer { opacity: 1; }   // already faded via parent
+    }
+
+    .ww-coords {
+        margin-bottom: 0.5em;
+    }
+
+    .ww-section-label {
+        margin-bottom: 0.55em;
+        font-weight: 600;
+        opacity: 0.6;
     }
 
     // ---------- Card: the four-beat structure ----------
 
     .ww-card {
-        padding: 0.5em 0 1.5em;
         animation: ww-fade-in 0.3s ease-out;
-    }
-
-    .ww-meta {
-        font-size: 0.7em;
-        color: #888884;
-        margin-bottom: 0.7em;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-feature-settings: 'tnum';
-
-        .ww-meta-sep {
-            margin: 0 0.3em;
-            color: #cccac3;
-        }
-        .ww-meta-layer {
-            color: #5a5a55;
-        }
     }
 
     .ww-card-title {
         margin: 0 0 0.85em;
-        font-size: 1.25em;
+        font-size: 1.3em;
         font-weight: 600;
         line-height: 1.3;
         letter-spacing: -0.005em;
-        color: #1a1a16;
     }
 
     .ww-card-mechanism {
-        margin: 0 0 1.5em;
-        line-height: 1.6;
+        margin: 0 0 1.4em;
         font-size: 0.97em;
-        color: #2a2a26;
     }
 
     .ww-card-section {
-        margin-bottom: 1.5em;
-
-        .ww-section-label {
-            font-size: 0.7em;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #888884;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-        }
+        margin-bottom: 1.4em;
     }
+
+    // ---------- Clickable layer-toggle buttons ----------
 
     .ww-toggle-button {
         display: flex;
@@ -340,83 +289,81 @@
         gap: 0.55em;
         width: 100%;
         margin: 0 0 0.45em;
-        padding: 0.7em 0.9em;
-        background: #f3efe5;
-        border: 1px solid transparent;
+        padding: 0.75em 0.95em;
+        background: rgba(127, 127, 127, 0.1);
+        border: 1px solid rgba(127, 127, 127, 0.18);
         border-radius: 0.55em;
         font-family: inherit;
-        font-size: 0.9em;
-        color: #2a4a6e;
+        font-size: 0.92em;
+        color: inherit;
         text-align: left;
         cursor: pointer;
         line-height: 1.45;
         transition: background 0.15s, border-color 0.15s, transform 0.05s;
 
         &:hover {
-            background: #e8e1d0;
-            border-color: rgba(42, 74, 110, 0.2);
+            background: rgba(127, 127, 127, 0.18);
+            border-color: rgba(127, 127, 127, 0.32);
         }
 
         &:active {
-            background: #ddd2b8;
+            background: rgba(127, 127, 127, 0.25);
             transform: translateY(0.5px);
         }
 
         .ww-toggle-arrow {
             flex-shrink: 0;
             font-weight: 700;
-            color: #2a4a6e;
+            opacity: 0.7;
         }
 
-        .ww-toggle-text {
-            flex: 1;
-        }
+        .ww-toggle-text { flex: 1; }
     }
+
+    // ---------- Closer: italic, small, muted ----------
 
     .ww-card-remember p {
         margin: 0;
-        font-size: 0.85em;
-        color: #6a6a66;
-        line-height: 1.5;
+        font-size: 0.86em;
+        line-height: 1.55;
         font-style: italic;
+        opacity: 0.65;
+    }
+
+    // ---------- Intro hint box ----------
+
+    .ww-state--intro .ww-intro-hint {
+        margin-top: 0.85em;
+        padding: 0.75em 0.95em;
+        background: rgba(127, 127, 127, 0.1);
+        border: 1px solid rgba(127, 127, 127, 0.18);
+        border-radius: 0.55em;
+        font-size: 0.9em;
+        line-height: 1.55;
+    }
+
+    // ---------- Loading / error / fallback subtleties ----------
+
+    .ww-state--loading p { font-style: italic; opacity: 0.65; }
+
+    .ww-state--error .ww-error-detail {
+        font-size: 0.78em;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        background: rgba(127, 127, 127, 0.1);
+        padding: 0.45em 0.65em;
+        border-radius: 0.35em;
+        opacity: 0.75;
+    }
+
+    .ww-state--fallback .ww-fallback-detail {
+        margin-top: 0.6em;
+        font-size: 0.88em;
+        line-height: 1.55;
+        opacity: 0.7;
     }
 
     @keyframes ww-fade-in {
         from { opacity: 0; transform: translateY(2px); }
         to   { opacity: 1; transform: translateY(0); }
-    }
-
-    // ---------- Map glyphs (must escape Svelte scoped CSS via :global) ----------
-
-    :global(.ww-low) {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 3px 9px 3px 6px;
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid #6a4f7a;
-        border-radius: 14px;
-        font-family: -apple-system, system-ui, sans-serif;
-        font-weight: 600;
-        color: #4a3556;
-        white-space: nowrap;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-        animation: ww-pulse 2.4s ease-in-out infinite;
-    }
-
-    :global(.ww-low-glyph) {
-        font-size: 14px;
-        line-height: 1;
-    }
-
-    :global(.ww-low-label) {
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        font-size: 9px;
-    }
-
-    @keyframes ww-pulse {
-        0%, 100% { opacity: 0.85; }
-        50%      { opacity: 1; }
     }
 </style>

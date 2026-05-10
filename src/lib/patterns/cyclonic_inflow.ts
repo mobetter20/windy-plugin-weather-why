@@ -52,44 +52,13 @@ function detect(facts: Facts) {
     };
 }
 
-function visual(map: any, facts: Facts, params: Params): () => void {
-    // No persistent map glyphs — Windy's wind layer carries the visualization.
-    // We add only:
-    //   1. A subtle dot at the click point so the user knows where the card refers to.
-    //   2. A soft, pulsing "Low" annotation at the low's actual location while the
-    //      card is open. Removed when card closes / next click runs.
-    const created: any[] = [];
-
-    const clickDot = new L.CircleMarker(
-        [facts.location.lat, facts.location.lon],
-        {
-            radius: 6,
-            color: '#2a4a6e',
-            weight: 2,
-            fillColor: '#ffffff',
-            fillOpacity: 1,
-            interactive: false,
-        },
-    ).addTo(map);
-    created.push(clickDot);
-
-    const lowMarker = new L.Marker(
-        { lat: params.low.lat, lng: params.low.lon },
-        {
-            icon: new L.DivIcon({
-                className: 'ww-low-icon',
-                html: '<div class="ww-low"><span class="ww-low-glyph">↻</span><span class="ww-low-label">Low</span></div>',
-                iconSize: [56, 28],
-                iconAnchor: [28, 14],
-            }),
-            interactive: false,
-        },
-    ).addTo(map);
-    created.push(lowMarker);
-
-    return () => {
-        for (const item of created) item.remove();
-    };
+function visual(_map: any, _facts: Facts, _params: Params): () => void {
+    // No map glyphs in v0.1. Windy's wind layer already carries the visualization
+    // — the streamline pattern IS the visible swirl. Past iterations added click
+    // markers and a "Low" badge, but they read as Windy-native UI rather than
+    // plugin-specific. Cleaner: nothing on the map; the side-pane card carries
+    // the explanation, with location distance/bearing baked into the prose.
+    return () => {};
 }
 
 function content(_facts: Facts, p: Params) {
