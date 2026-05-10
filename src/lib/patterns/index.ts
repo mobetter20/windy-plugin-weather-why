@@ -18,9 +18,11 @@ import cape_no_storms from './cape_no_storms';
 import cyclonic_inflow from './cyclonic_inflow';
 import haze_dust_plume from './haze_dust_plume';
 import jet_stream from './jet_stream';
+import orographic_rain from './orographic_rain';
 import radar_satellite_mismatch from './radar_satellite_mismatch';
 import rain_in_a_line from './rain_in_a_line';
 import sharp_temperature_line from './sharp_temperature_line';
+import swell_vs_wind from './swell_vs_wind';
 import tight_gradient from './tight_gradient';
 import wind_gust_factor from './wind_gust_factor';
 
@@ -34,6 +36,8 @@ const MODULES: PatternModule<any>[] = [
     sharp_temperature_line,
     haze_dust_plume,
     wind_gust_factor,
+    orographic_rain,
+    swell_vs_wind,
 ];
 
 export interface DispatchResult {
@@ -76,10 +80,13 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'jet_stream',               title: 'Jet stream',                                layerHint: 'Wind layer at 250h or 300h' },
     { id: 'rain_in_a_line',           title: 'Rain in a line (front / squall)',           layerHint: 'Rain or Radar layer' },
     { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
-    { id: 'radar_satellite_mismatch', title: 'Clouds without rain (radar vs satellite)',  layerHint: 'Radar or Satellite layer' },
-    { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',        layerHint: 'Temperature layer' },
-    { id: 'haze_dust_plume',          title: 'Haze or dust plume',                       layerHint: 'Air quality layer (cAQI, PM2.5, PM10, dust)' },
-    { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',     layerHint: 'Gust layer' },
+    { id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer' },
+    { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',               layerHint: 'Temperature layer' },
+    { id: 'haze_dust_plume',          title: 'Haze or dust plume',                               layerHint: 'Air quality layer (cAQI, PM2.5, PM10, dust)' },
+    { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',            layerHint: 'Gust layer' },
+    { id: 'orographic_rain',          title: 'Orographic rain & rain shadow',                    layerHint: 'Rain layer (elevated terrain)' },
+    { id: 'swell_vs_wind',            title: 'Swell vs wind waves (distant storm energy)',       layerHint: 'Waves or Swell layer' },
+    // #8 sea breeze intentionally deferred to v2 — detection requires coastline-awareness not yet implemented.
 ];
 
 export { MODULES };

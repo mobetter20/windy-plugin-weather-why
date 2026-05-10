@@ -7,6 +7,7 @@ import type {
     Facts,
     ForecastTrend,
     Instability,
+    Marine,
     PastTrends,
     PressureFeature,
     SurfaceFacts,
@@ -16,6 +17,7 @@ import type {
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_QUALITY_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
+const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
 // Regional MSL pressure grid for synoptic feature detection. ±4.5° box,
 // 1.5° spacing → 7×7 = 49 points (~165 km cells, fine for synoptic features).
@@ -106,6 +108,15 @@ function fetchAirQuality(lat: number, lon: number, signal?: AbortSignal): Promis
     return getJson(`${AIR_QUALITY_URL}?${params}`, signal);
 }
 
+function fetchMarine(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
+    const params = new URLSearchParams({
+        latitude: String(lat),
+        longitude: String(lon),
+        current: 'swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_period',
+    });
+    return getJson(`${MARINE_URL}?${params}`, signal);
+}
+
 function extractSurface(wx: any): SurfaceFacts {
     const c = wx?.current ?? {};
     const wd = c.wind_direction_10m;
@@ -122,6 +133,7 @@ function extractSurface(wx: any): SurfaceFacts {
         wind_compass: wd != null ? compass8(wd) : null,
         cloud_cover_pct: c.cloud_cover ?? null,
         precipitation_mm: c.precipitation ?? null,
+        elevation_m: wx?.elevation ?? null,
     };
 }
 
@@ -275,6 +287,17 @@ function extractAirQuality(aq: any): AirQuality {
     };
 }
 
+function extractMarine(m: any): Marine {
+    const c = m?.current ?? {};
+    return {
+        swell_wave_height: c.swell_wave_height ?? null,
+        swell_wave_direction: c.swell_wave_direction ?? null,
+        swell_wave_period: c.swell_wave_period ?? null,
+        wind_wave_height: c.wind_wave_height ?? null,
+        wind_wave_period: c.wind_wave_period ?? null,
+    };
+}
+
 function extractInstability(wx: any): Instability {
     // CAPE not always available in `current`; pull from hourly[24] (== "now")
     // since past_hours=24 means index 24 corresponds to current hour.
@@ -284,11 +307,12 @@ function extractInstability(wx: any): Instability {
 }
 
 export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal): Promise<Facts> {
-    const [wx, ua, grid, aq] = await Promise.all([
+    const [wx, ua, grid, aq, marineRaw] = await Promise.all([
         fetchSurfaceAndHistory(lat, lon, signal),
         fetchUpperAir(lat, lon, signal),
         fetchPressureGrid(lat, lon, signal),
         fetchAirQuality(lat, lon, signal),
+        fetchMarine(lat, lon, signal).catch(() => null),  // null for inland/error
     ]);
     return {
         location: { lat, lon },
@@ -300,5 +324,6 @@ export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal)
         synoptic: findSynopticFeatures(grid, lat, lon),
         air_quality: extractAirQuality(aq),
         instability: extractInstability(wx),
+        marine: marineRaw != null ? extractMarine(marineRaw) : null,
     };
 }

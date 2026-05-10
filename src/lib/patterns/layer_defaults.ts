@@ -191,13 +191,28 @@ const cape_default: DefaultFn = (f, _ctx) => {
     };
 };
 
-const waves_default: DefaultFn = (_f, _ctx) => {
+const waves_default: DefaultFn = (f, _ctx) => {
+    const m = f.marine;
+    const swellH = m?.swell_wave_height;
+    const windH = m?.wind_wave_height;
+
+    let localPhrase: string;
+    if (swellH != null && windH != null) {
+        localPhrase = `Local swell is ${swellH.toFixed(1)}m with ${windH.toFixed(1)}m of wind chop on top.`;
+    } else if (swellH != null) {
+        localPhrase = `Local swell height here is ${swellH.toFixed(1)}m.`;
+    } else if (windH != null) {
+        localPhrase = `Local wind-wave height here is ${windH.toFixed(1)}m.`;
+    } else {
+        localPhrase = 'Local wave data is unavailable for this point.';
+    }
+
     return {
         title: "What you're seeing",
         mechanism:
             `This layer shows significant wave height — the average of the highest third of waves at each point. ` +
             `It combines local wind chop with swell arriving from distant storms, sometimes thousands of kilometres away. ` +
-            `Wave data isn't available from Open-Meteo's free tier, so no local value is shown here.`,
+            localPhrase,
         checkNext: [
             {
                 label: 'Toggle Wind: the wave pattern follows the wind trajectory nearby and upwind',

@@ -19,6 +19,7 @@ export interface SurfaceFacts {
     wind_compass: string | null;
     cloud_cover_pct: number | null;
     precipitation_mm: number | null;
+    elevation_m: number | null;    // terrain elevation at click point (from Open-Meteo top-level field)
 }
 
 export interface PressureFeature {
@@ -74,6 +75,14 @@ export interface Instability {
     cape_jkg: number | null; // Convective Available Potential Energy
 }
 
+export interface Marine {
+    swell_wave_height: number | null;    // m
+    swell_wave_direction: number | null; // degrees
+    swell_wave_period: number | null;    // seconds
+    wind_wave_height: number | null;     // m
+    wind_wave_period: number | null;     // seconds
+}
+
 export interface Facts {
     location: LatLon;
     generated_at: string;
@@ -84,6 +93,7 @@ export interface Facts {
     synoptic: SynopticFacts;
     air_quality: AirQuality;
     instability: Instability;
+    marine: Marine | null;  // null if Marine API unavailable (inland, error)
 }
 
 // =====================================================================
