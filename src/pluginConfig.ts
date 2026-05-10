@@ -6,7 +6,7 @@ const config: ExternalPluginConfig = {
     icon: '🌤️',
     title: 'weather-why',
     description:
-        "Click anywhere on the map and find out why the weather there is doing what it's doing — visual annotations + curated science, designed for curious adults. No jargon walls.",
+        "Click any spot on any Windy layer (wind, rain, pressure, jet stream, satellite, CAPE, dust, waves, more) and find out why the weather there is doing what it's doing. Each click yields a short hand-written card that names the pattern, explains the mechanism, and toggles to a related layer so you can verify what you're seeing.",
     author: 'ajin',
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
