@@ -98,11 +98,19 @@
 
     import config from './pluginConfig';
     import { fetchFacts } from './lib/facts';
-    import { pickPattern, getSupportedLayers, CATALOG } from './lib/patterns';
+    import {
+        pickPattern,
+        getSupportedLayers,
+        getLayerDefault,
+        getDefaultedLayers,
+        CATALOG,
+    } from './lib/patterns';
     import type { DetectContext, Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
 
     const { name, title } = config;
     const supportedLayers = getSupportedLayers();
+    const defaultedLayers = getDefaultedLayers();
+    const coveredLayers = new Set<WindyOverlay>([...supportedLayers, ...defaultedLayers]);
 
     let isLoading = false;
     let facts: Facts | null = null;
@@ -126,7 +134,7 @@
         pattern = null;
 
         currentLayer = (store.get('overlay') as WindyOverlay) ?? 'wind';
-        currentLayerSupported = supportedLayers.includes(currentLayer);
+        currentLayerSupported = coveredLayers.has(currentLayer);
         const level = (store.get('level') as string) ?? 'surface';
         const ctx: DetectContext = { activeLayer: currentLayer, level };
 
@@ -134,6 +142,7 @@
             const f = await fetchFacts(loc.lat, loc.lon);
             facts = f;
 
+            // 1. Try a specific pattern.
             const result = pickPattern(ctx, f);
             if (result.module) {
                 const card = result.module.content(f, result.params);
@@ -145,6 +154,19 @@
                     card,
                 };
                 visualCleanup = cleanup;
+            } else {
+                // 2. Fall back to a layer-default card if this layer has one.
+                const defaultCard = getLayerDefault(currentLayer, f, ctx);
+                if (defaultCard) {
+                    pattern = {
+                        id: 'layer_default',
+                        location: f.location,
+                        layer: currentLayer,
+                        card: defaultCard,
+                    };
+                    // No visual cleanup needed — defaults don't draw.
+                }
+                // 3. Otherwise: render the "layer not yet supported" UI fallback.
             }
             setUrl(name, { lat: loc.lat, lon: loc.lon });
         } catch (e: any) {

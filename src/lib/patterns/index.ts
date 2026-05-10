@@ -1,27 +1,35 @@
-// Pattern registry + layer-aware dispatcher.
+// Pattern registry + layer-aware dispatcher + layer defaults.
 //
 // Detection is gated by:
 //   1. The currently-active Windy overlay (`store.get('overlay')`)
 //   2. The active wind level (`store.get('level')`) for wind-layer patterns
-// Same click means different things on different layer + level combinations.
-// The dispatcher only considers patterns whose appliesToLayers includes the
-// current overlay; each pattern's detect() additionally gates on the level
-// where relevant.
+//
+// Resolution order at click time:
+//   1. Run all patterns whose appliesToLayers matches the active overlay.
+//      Each detect() additionally gates on level / sub-conditions.
+//      Highest-confidence active match wins.
+//   2. If no pattern fired but the active layer has a default, render the
+//      default card ("Wind right here", "Pressure right here", etc.).
+//   3. Otherwise show the "layer not yet supported" fallback in the UI.
 
 import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types';
+
+import cape_no_storms from './cape_no_storms';
 import cyclonic_inflow from './cyclonic_inflow';
 import jet_stream from './jet_stream';
+import radar_satellite_mismatch from './radar_satellite_mismatch';
 import rain_in_a_line from './rain_in_a_line';
+import sharp_temperature_line from './sharp_temperature_line';
 import tight_gradient from './tight_gradient';
 
-// Order doesn't matter for correctness — pickPattern returns the highest-
-// confidence active match. Listed roughly by specificity (more specific first
-// makes log output easier to read when debugging).
 const MODULES: PatternModule<any>[] = [
     cyclonic_inflow,
     jet_stream,
     tight_gradient,
     rain_in_a_line,
+    cape_no_storms,
+    radar_satellite_mismatch,
+    sharp_temperature_line,
 ];
 
 export interface DispatchResult {
@@ -54,16 +62,19 @@ export function getSupportedLayers(): WindyOverlay[] {
 export interface PatternCatalogEntry {
     id: string;
     title: string;
-    layerHint: string;   // human-readable for the intro hint
+    layerHint: string;
 }
 
-// For displaying "what patterns I currently recognise" in the intro state.
-// Order shown to user.
+// Order shown to user in the intro state.
 export const CATALOG: PatternCatalogEntry[] = [
-    { id: 'cyclonic_inflow', title: 'Wind curling around a low', layerHint: 'Wind layer (surface)' },
-    { id: 'tight_gradient',  title: 'Strong wind in a tight pressure gradient', layerHint: 'Wind layer (surface)' },
-    { id: 'rain_in_a_line',  title: 'Rain in a line (front / squall)', layerHint: 'Rain or Radar layer' },
-    { id: 'jet_stream',      title: 'Jet stream', layerHint: 'Wind layer at 250h or 300h' },
+    { id: 'cyclonic_inflow',          title: 'Wind curling around a low',                 layerHint: 'Wind layer (surface)' },
+    { id: 'tight_gradient',           title: 'Strong wind in a tight pressure gradient',  layerHint: 'Wind layer (surface)' },
+    { id: 'jet_stream',               title: 'Jet stream',                                layerHint: 'Wind layer at 250h or 300h' },
+    { id: 'rain_in_a_line',           title: 'Rain in a line (front / squall)',           layerHint: 'Rain or Radar layer' },
+    { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
+    { id: 'radar_satellite_mismatch', title: 'Clouds without rain (radar vs satellite)',  layerHint: 'Radar or Satellite layer' },
+    { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',        layerHint: 'Temperature layer' },
 ];
 
 export { MODULES };
+export { getLayerDefault, getDefaultedLayers } from './layer_defaults';

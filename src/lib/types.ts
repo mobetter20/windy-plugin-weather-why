@@ -70,6 +70,10 @@ export interface AirQuality {
     european_aqi: number | null;
 }
 
+export interface Instability {
+    cape_jkg: number | null; // Convective Available Potential Energy
+}
+
 export interface Facts {
     location: LatLon;
     generated_at: string;
@@ -79,6 +83,7 @@ export interface Facts {
     upper_air: UpperAir;
     synoptic: SynopticFacts;
     air_quality: AirQuality;
+    instability: Instability;
 }
 
 // =====================================================================

@@ -6,6 +6,7 @@ import type {
     AirQuality,
     Facts,
     ForecastTrend,
+    Instability,
     PastTrends,
     PressureFeature,
     SurfaceFacts,
@@ -40,6 +41,7 @@ function fetchSurfaceAndHistory(lat: number, lon: number): Promise<any> {
         hourly: [
             'temperature_2m', 'pressure_msl', 'wind_speed_10m',
             'wind_direction_10m', 'precipitation', 'relative_humidity_2m',
+            'cape',
         ].join(','),
         past_hours: '24',
         forecast_hours: '24',
@@ -262,6 +264,14 @@ function extractAirQuality(aq: any): AirQuality {
     };
 }
 
+function extractInstability(wx: any): Instability {
+    // CAPE not always available in `current`; pull from hourly[24] (== "now")
+    // since past_hours=24 means index 24 corresponds to current hour.
+    const arr = wx?.hourly?.cape;
+    const value = Array.isArray(arr) && arr.length > 24 ? arr[24] : null;
+    return { cape_jkg: typeof value === 'number' ? value : null };
+}
+
 export async function fetchFacts(lat: number, lon: number): Promise<Facts> {
     const [wx, ua, grid, aq] = await Promise.all([
         fetchSurfaceAndHistory(lat, lon),
@@ -278,5 +288,6 @@ export async function fetchFacts(lat: number, lon: number): Promise<Facts> {
         upper_air: extractUpperAir(ua),
         synoptic: findSynopticFeatures(grid, lat, lon),
         air_quality: extractAirQuality(aq),
+        instability: extractInstability(wx),
     };
 }
