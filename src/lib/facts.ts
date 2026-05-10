@@ -20,6 +20,14 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const AIR_QUALITY_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
 const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine';
 
+function clampLat(lat: number): number {
+    return Math.max(-90, Math.min(90, lat));
+}
+
+function wrapLon(lon: number): number {
+    return ((lon + 180) % 360 + 360) % 360 - 180;
+}
+
 // Regional MSL pressure grid for synoptic feature detection. ±4.5° box,
 // 1.5° spacing → 7×7 = 49 points (~165 km cells, fine for synoptic features).
 const GRID_RADIUS_DEG = 4.5;
@@ -87,8 +95,8 @@ function fetchPressureGrid(lat: number, lon: number, signal?: AbortSignal): Prom
     const lons: number[] = [];
     for (let di = -n; di <= n; di++) {
         for (let dj = -n; dj <= n; dj++) {
-            lats.push(Math.round((lat + di * GRID_STEP_DEG) * 1e4) / 1e4);
-            lons.push(Math.round((lon + dj * GRID_STEP_DEG) * 1e4) / 1e4);
+            lats.push(clampLat(Math.round((lat + di * GRID_STEP_DEG) * 1e4) / 1e4));
+            lons.push(wrapLon(Math.round((lon + dj * GRID_STEP_DEG) * 1e4) / 1e4));
         }
     }
     const params = new URLSearchParams({
@@ -115,8 +123,8 @@ function fetchAirQuality(lat: number, lon: number, signal?: AbortSignal): Promis
 // accepted false-positive rate; flag back to user if it fires too often inland).
 function fetchOceanProbe(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const offset = 0.5; // degrees (~55 km at equator)
-    const lats = [lat + offset, lat - offset, lat, lat].map(v => String(Math.round(v * 1e4) / 1e4));
-    const lons = [lon, lon, lon + offset, lon - offset].map(v => String(Math.round(v * 1e4) / 1e4));
+    const lats = [lat + offset, lat - offset, lat, lat].map(v => String(clampLat(Math.round(v * 1e4) / 1e4)));
+    const lons = [lon, lon, lon + offset, lon - offset].map(v => String(wrapLon(Math.round(v * 1e4) / 1e4)));
     const params = new URLSearchParams({
         latitude: lats.join(','),
         longitude: lons.join(','),

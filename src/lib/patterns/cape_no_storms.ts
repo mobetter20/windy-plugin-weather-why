@@ -64,10 +64,10 @@ function content(_facts: Facts, p: Params) {
     return {
         title: "Why this CAPE isn't producing storms",
         mechanism:
-            `CAPE is the energy a rising air parcel could release IF something pushed it ` +
+            `CAPE is the energy a rising air parcel could release if something pushed it ` +
             `high enough to break free. A reading of ${cape} J/kg is ${severityWord}: the ` +
-            `atmosphere here is unstable. But CAPE is just *fuel* — a storm needs a *trigger*: ` +
-            `a front, sea breeze, or terrain lifting. Often a 'cap' of warmer air aloft suppresses ` +
+            `atmosphere here is unstable. But CAPE is just fuel — a storm needs a trigger: ` +
+            `a front, sea breeze, or terrain lifting. A 'cap' of warmer air aloft often suppresses ` +
             `the lift even when fuel is plentiful.`,
         checkNext: [
             {

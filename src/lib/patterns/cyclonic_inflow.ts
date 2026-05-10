@@ -82,7 +82,7 @@ function content(facts: Facts, p: Params) {
             mechanism:
                 `You're looking at a tropical cyclone — central pressure around ${Math.round(p.low.pressure_hPa)} hPa, ` +
                 `about ${dist} ${compass}. Warm ocean water (>26 °C) feeds rising air, which condenses, releases heat, ` +
-                `and accelerates the rotation. The lower the central pressure, the more energy the system has organised. ` +
+                `and accelerates the rotation. The lower the central pressure, the stronger the system. ` +
                 `${p.hemisphere === 'N' ? 'Northern' : 'Southern'} Hemisphere rotation is ${rotation}.`,
             checkNext: [
                 {
@@ -106,7 +106,7 @@ function content(facts: Facts, p: Params) {
             `You're looking at wind spiraling around a low-pressure system roughly ` +
             `${dist} ${compass} of you. Air flows inward toward low pressure, but ` +
             `Earth's rotation deflects it (${rotation} in the ${p.hemisphere === 'N' ? 'Northern' : 'Southern'} Hemisphere), so it spirals rather than ` +
-            `rushing straight in. Where that rotation lifts moist air, clouds and rain often form.`,
+            `rushing straight in. Where that rotation lifts moist air, clouds and rain follow.`,
         checkNext: [
             {
                 label: 'Toggle Pressure: look for closed contours where the swirl is centered',
