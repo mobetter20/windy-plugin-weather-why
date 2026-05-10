@@ -12,7 +12,7 @@
 // (closer or more pronounced) than the nearest high. Confidence weights
 // distance, depth, and dominance.
 
-import type { Facts, PatternModule, PressureFeature, WindyOverlay } from '../types';
+import type { DetectContext, Facts, PatternModule, PressureFeature, WindyOverlay } from '../types';
 
 interface Params {
     low: PressureFeature;
@@ -20,10 +20,18 @@ interface Params {
     pressureChange24h: number | null;
 }
 
-function detect(facts: Facts) {
+function detect(facts: Facts, ctx: DetectContext) {
     const { synoptic, past_24h, location } = facts;
     const low = synoptic.nearest_low;
     const high = synoptic.nearest_high;
+
+    // This pattern is about *surface* wind curling around a low. At upper
+    // levels (250h, 500h) the user is looking at jets and ridges, not a
+    // surface swirl — defer to those patterns.
+    const isSurfaceLevel = ctx.level === 'surface' || ctx.level === '950h' || ctx.level === '850h';
+    if (!isSurfaceLevel) {
+        return { active: false, confidence: 0, params: null as any };
+    }
 
     const inRange = low.distance_km < 1500;
     const isReallyALow = low.pressure_hPa < 1010;

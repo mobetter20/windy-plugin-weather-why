@@ -1,17 +1,28 @@
 // Pattern registry + layer-aware dispatcher.
 //
-// Detection is gated by the currently-active Windy overlay
-// (`store.get('overlay')`). Same click on the same lat/lon means different
-// things on the wind layer vs the rain layer vs the CAPE layer. The dispatcher
-// only considers patterns whose `appliesToLayers` includes the current overlay.
-//
-// Phase 1d ships with one pattern (cyclonic_inflow). Phase 2+ adds the
-// remaining 12 from the locked v1 topic table.
+// Detection is gated by:
+//   1. The currently-active Windy overlay (`store.get('overlay')`)
+//   2. The active wind level (`store.get('level')`) for wind-layer patterns
+// Same click means different things on different layer + level combinations.
+// The dispatcher only considers patterns whose appliesToLayers includes the
+// current overlay; each pattern's detect() additionally gates on the level
+// where relevant.
 
-import type { Facts, PatternModule, WindyOverlay } from '../types';
+import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types';
 import cyclonic_inflow from './cyclonic_inflow';
+import jet_stream from './jet_stream';
+import rain_in_a_line from './rain_in_a_line';
+import tight_gradient from './tight_gradient';
 
-const MODULES: PatternModule<any>[] = [cyclonic_inflow];
+// Order doesn't matter for correctness — pickPattern returns the highest-
+// confidence active match. Listed roughly by specificity (more specific first
+// makes log output easier to read when debugging).
+const MODULES: PatternModule<any>[] = [
+    cyclonic_inflow,
+    jet_stream,
+    tight_gradient,
+    rain_in_a_line,
+];
 
 export interface DispatchResult {
     module: PatternModule<any> | null;
@@ -19,11 +30,11 @@ export interface DispatchResult {
     params: unknown;
 }
 
-export function pickPattern(activeLayer: WindyOverlay, facts: Facts): DispatchResult {
+export function pickPattern(ctx: DetectContext, facts: Facts): DispatchResult {
     let best: DispatchResult = { module: null, confidence: 0, params: null };
     for (const mod of MODULES) {
-        if (!mod.appliesToLayers.includes(activeLayer)) continue;
-        const r = mod.detect(facts);
+        if (!mod.appliesToLayers.includes(ctx.activeLayer)) continue;
+        const r = mod.detect(facts, ctx);
         if (r.active && r.confidence > best.confidence) {
             best = { module: mod, confidence: r.confidence, params: r.params };
         }
@@ -31,9 +42,7 @@ export function pickPattern(activeLayer: WindyOverlay, facts: Facts): DispatchRe
     return best;
 }
 
-// Set of overlays where at least one pattern is currently shipped — used by
-// the UI to distinguish "right layer, no pattern matched" from
-// "this layer isn't supported yet."
+// Set of overlays where at least one pattern is currently shipped.
 export function getSupportedLayers(): WindyOverlay[] {
     const set = new Set<WindyOverlay>();
     for (const mod of MODULES) {
@@ -41,5 +50,20 @@ export function getSupportedLayers(): WindyOverlay[] {
     }
     return Array.from(set);
 }
+
+export interface PatternCatalogEntry {
+    id: string;
+    title: string;
+    layerHint: string;   // human-readable for the intro hint
+}
+
+// For displaying "what patterns I currently recognise" in the intro state.
+// Order shown to user.
+export const CATALOG: PatternCatalogEntry[] = [
+    { id: 'cyclonic_inflow', title: 'Wind curling around a low', layerHint: 'Wind layer (surface)' },
+    { id: 'tight_gradient',  title: 'Strong wind in a tight pressure gradient', layerHint: 'Wind layer (surface)' },
+    { id: 'rain_in_a_line',  title: 'Rain in a line (front / squall)', layerHint: 'Rain or Radar layer' },
+    { id: 'jet_stream',      title: 'Jet stream', layerHint: 'Wind layer at 250h or 300h' },
+];
 
 export { MODULES };

@@ -76,10 +76,14 @@
         <div class="ww-state ww-state--intro">
             <h2>Click anywhere on the map.</h2>
             <p>I'll read what you're looking at on the active layer and explain the pattern.</p>
-            <p class="ww-intro-hint">
-                Right now I recognise one pattern: <strong>wind curling around a low</strong>,
-                on the <em>Wind</em> layer. Try clicking near a visible swirl.
-            </p>
+            <div class="ww-intro-hint">
+                <div class="ww-intro-hint-label">Patterns I recognise so far:</div>
+                <ul>
+                    {#each CATALOG as p}
+                        <li><strong>{p.title}</strong> <span class="ww-intro-layer">— {p.layerHint}</span></li>
+                    {/each}
+                </ul>
+            </div>
         </div>
     {/if}
 </section>
@@ -94,8 +98,8 @@
 
     import config from './pluginConfig';
     import { fetchFacts } from './lib/facts';
-    import { pickPattern, getSupportedLayers } from './lib/patterns';
-    import type { Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
+    import { pickPattern, getSupportedLayers, CATALOG } from './lib/patterns';
+    import type { DetectContext, Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
 
     const { name, title } = config;
     const supportedLayers = getSupportedLayers();
@@ -123,12 +127,14 @@
 
         currentLayer = (store.get('overlay') as WindyOverlay) ?? 'wind';
         currentLayerSupported = supportedLayers.includes(currentLayer);
+        const level = (store.get('level') as string) ?? 'surface';
+        const ctx: DetectContext = { activeLayer: currentLayer, level };
 
         try {
             const f = await fetchFacts(loc.lat, loc.lon);
             facts = f;
 
-            const result = pickPattern(currentLayer, f);
+            const result = pickPattern(ctx, f);
             if (result.module) {
                 const card = result.module.content(f, result.params);
                 const cleanup = result.module.visual(map, f, result.params);
@@ -334,12 +340,37 @@
 
     .ww-state--intro .ww-intro-hint {
         margin-top: 0.85em;
-        padding: 0.75em 0.95em;
+        padding: 0.85em 1em;
         background: rgba(127, 127, 127, 0.1);
         border: 1px solid rgba(127, 127, 127, 0.18);
         border-radius: 0.55em;
         font-size: 0.9em;
         line-height: 1.55;
+
+        .ww-intro-hint-label {
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.6;
+            margin-bottom: 0.55em;
+            font-weight: 600;
+        }
+
+        ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        li {
+            margin: 0 0 0.35em;
+            line-height: 1.5;
+        }
+
+        .ww-intro-layer {
+            opacity: 0.65;
+            font-size: 0.92em;
+        }
     }
 
     // ---------- Loading / error / fallback subtleties ----------

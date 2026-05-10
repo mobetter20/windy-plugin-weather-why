@@ -112,10 +112,19 @@ export type WindyOverlay =
     | 'waves' | 'swell1' | 'swell2'
     | 'cAQI' | 'pm2p5' | 'pm10' | 'dust' | 'visibility';
 
+// Context passed to pattern detectors: which Windy overlay is active, and
+// (for wind layers) which pressure level — 'surface' / '850h' / '500h' /
+// '250h' etc. The level matters for distinguishing surface-wind patterns
+// (cyclonic inflow, sea breeze) from upper-air patterns (jet stream).
+export interface DetectContext {
+    activeLayer: WindyOverlay;
+    level: string;          // 'surface' | '950h' | '850h' | '500h' | '250h' | …
+}
+
 export interface PatternModule<P = unknown> {
     id: string;                       // 'cyclonic_inflow', 'rain_in_a_line', etc.
     appliesToLayers: WindyOverlay[];  // gates detection to these active overlays
-    detect(facts: Facts): { active: boolean; confidence: number; params: P };
+    detect(facts: Facts, ctx: DetectContext): { active: boolean; confidence: number; params: P };
     visual(map: any, facts: Facts, params: P): () => void;
     content(facts: Facts, params: P): PatternCard;
 }
