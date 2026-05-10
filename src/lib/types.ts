@@ -1,6 +1,5 @@
 // Shared types for weather-why plugin.
-// Mirrors the schema produced by the standalone pipeline.py for parity, so
-// curated content + detection logic can be ported either direction.
+// Schema for Facts mirrors pipeline.py output (so detection rules port).
 
 export interface LatLon {
     lat: number;
@@ -82,29 +81,41 @@ export interface Facts {
     air_quality: AirQuality;
 }
 
-export interface ChunkData {
-    emoji: string;
-    text: string;
+// =====================================================================
+// Pattern modules (replaces the older PhenomenonModule shape).
+//
+// A Pattern is "the visible thing on a Windy layer that the user clicked"
+// — e.g., wind streamlines curling, a rain band, a haze plume. Detection
+// is layer-aware: the same click means different things on the wind layer
+// vs the rain layer. Each module gates on which Windy overlays it applies
+// to (`store.get('overlay')` value).
+// =====================================================================
+
+export interface CheckNext {
+    // Label shown in the card; clicking will set this overlay via store.set
+    label: string;        // e.g., "Toggle Pressure: look for closed contours"
+    overlay: WindyOverlay; // Windy overlay key the button switches to
 }
 
-export interface ContentBlock {
-    opener: string;
-    body: ChunkData[];
-    closer: string; // markdown italics fenced with _underscores_
+export interface PatternCard {
+    title: string;        // "Why the wind curls here"
+    mechanism: string;    // 2-3 short sentences
+    checkNext: CheckNext[]; // 1-2 cross-layer toggles
+    remember: string;     // 1 short sentence on caveat / model vs obs
 }
 
-export interface DetectionResult<P = unknown> {
-    active: boolean;
-    confidence: number; // 0..1
-    params: P;
-}
+// Subset of Windy's overlay key strings we currently care about.
+// Source: examples in windy-plugin-template (store.set('overlay', 'wind') etc.)
+export type WindyOverlay =
+    | 'wind' | 'gust' | 'rain' | 'rainAccu' | 'radar' | 'satellite'
+    | 'pressure' | 'temp' | 'clouds' | 'cloudtop' | 'cape'
+    | 'waves' | 'swell1' | 'swell2'
+    | 'cAQI' | 'pm2p5' | 'pm10' | 'dust' | 'visibility';
 
-// A phenomenon module encapsulates: when does this phenomenon describe what's
-// happening? what should we draw on the map? what curated text do we render?
-export interface PhenomenonModule<P = unknown> {
-    id: string;
-    label: string;
-    detect(facts: Facts): DetectionResult<P>;
-    visual(map: any, facts: Facts, params: P): () => void; // returns cleanup
-    content(facts: Facts, params: P): ContentBlock;
+export interface PatternModule<P = unknown> {
+    id: string;                       // 'cyclonic_inflow', 'rain_in_a_line', etc.
+    appliesToLayers: WindyOverlay[];  // gates detection to these active overlays
+    detect(facts: Facts): { active: boolean; confidence: number; params: P };
+    visual(map: any, facts: Facts, params: P): () => void;
+    content(facts: Facts, params: P): PatternCard;
 }
