@@ -6,6 +6,7 @@ import type {
     AirQuality,
     Facts,
     ForecastTrend,
+    Geo,
     Instability,
     Marine,
     PastTrends,
@@ -106,6 +107,23 @@ function fetchAirQuality(lat: number, lon: number, signal?: AbortSignal): Promis
         current: 'pm2_5,pm10,european_aqi',
     });
     return getJson(`${AIR_QUALITY_URL}?${params}`, signal);
+}
+
+// 4-point cardinal probe to detect whether an ocean cell lies within ~55 km.
+// Requests the top-level `elevation` field from Open-Meteo by batching 4 points.
+// Points where elevation === 0 are treated as ocean (also catches large lakes —
+// accepted false-positive rate; flag back to user if it fires too often inland).
+function fetchOceanProbe(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
+    const offset = 0.5; // degrees (~55 km at equator)
+    const lats = [lat + offset, lat - offset, lat, lat].map(v => String(Math.round(v * 1e4) / 1e4));
+    const lons = [lon, lon, lon + offset, lon - offset].map(v => String(Math.round(v * 1e4) / 1e4));
+    const params = new URLSearchParams({
+        latitude: lats.join(','),
+        longitude: lons.join(','),
+        current: 'temperature_2m',
+        timezone: 'UTC',
+    });
+    return getJson(`${FORECAST_URL}?${params}`, signal);
 }
 
 function fetchMarine(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
@@ -298,6 +316,48 @@ function extractMarine(m: any): Marine {
     };
 }
 
+function angularDiff(a: number, b: number): number {
+    return ((a - b + 540) % 360) - 180;
+}
+
+function extractGeo(
+    probeRaw: any,
+    centerLat: number,
+    centerLon: number,
+    centerElevM: number | null,
+    windDirDeg: number | null,
+): Geo {
+    const empty: Geo = { ocean_nearby_compass: null, ocean_bearing_deg: null, ocean_distance_km: null };
+    // Click is itself on ocean — sea breeze isn't the interesting story from here.
+    if ((centerElevM ?? 0) <= 0) return empty;
+    if (!probeRaw) return empty;
+
+    const arr: any[] = Array.isArray(probeRaw) ? probeRaw : [probeRaw];
+    const oceanPoints: Array<{ bearing: number; compass: string; distKm: number }> = [];
+    for (const pt of arr) {
+        if ((pt?.elevation ?? -1) !== 0) continue;
+        const bearing = initialBearingDeg(centerLat, centerLon, pt.latitude ?? pt.lat, pt.longitude ?? pt.lon);
+        oceanPoints.push({
+            bearing: Math.round(bearing),
+            compass: compass8(bearing),
+            distKm: Math.round(haversineKm(centerLat, centerLon, pt.latitude ?? pt.lat, pt.longitude ?? pt.lon)),
+        });
+    }
+    if (oceanPoints.length === 0) return empty;
+
+    // Prefer the ocean point closest to the direction the wind is coming FROM
+    // (onshore wind: wind_dir ≈ bearing toward ocean).
+    let chosen = oceanPoints[0];
+    if (windDirDeg != null && oceanPoints.length > 1) {
+        let bestDiff = Infinity;
+        for (const op of oceanPoints) {
+            const diff = Math.abs(angularDiff(windDirDeg, op.bearing));
+            if (diff < bestDiff) { bestDiff = diff; chosen = op; }
+        }
+    }
+    return { ocean_nearby_compass: chosen.compass, ocean_bearing_deg: chosen.bearing, ocean_distance_km: chosen.distKm };
+}
+
 function extractInstability(wx: any): Instability {
     // CAPE not always available in `current`; pull from hourly[24] (== "now")
     // since past_hours=24 means index 24 corresponds to current hour.
@@ -307,17 +367,19 @@ function extractInstability(wx: any): Instability {
 }
 
 export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal): Promise<Facts> {
-    const [wx, ua, grid, aq, marineRaw] = await Promise.all([
+    const [wx, ua, grid, aq, marineRaw, probeRaw] = await Promise.all([
         fetchSurfaceAndHistory(lat, lon, signal),
         fetchUpperAir(lat, lon, signal),
         fetchPressureGrid(lat, lon, signal),
         fetchAirQuality(lat, lon, signal),
-        fetchMarine(lat, lon, signal).catch(() => null),  // null for inland/error
+        fetchMarine(lat, lon, signal).catch(() => null),      // null for inland/error
+        fetchOceanProbe(lat, lon, signal).catch(() => null),  // null if API fails
     ]);
+    const surface = extractSurface(wx);
     return {
         location: { lat, lon },
         generated_at: new Date().toISOString(),
-        surface: extractSurface(wx),
+        surface,
         past_24h: summarizeHistory(wx.hourly ?? {}),
         forecast_24h: summarizeForecast(wx.hourly ?? {}),
         upper_air: extractUpperAir(ua),
@@ -325,5 +387,6 @@ export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal)
         air_quality: extractAirQuality(aq),
         instability: extractInstability(wx),
         marine: marineRaw != null ? extractMarine(marineRaw) : null,
+        geo: extractGeo(probeRaw, lat, lon, surface.elevation_m, surface.wind_direction_deg),
     };
 }

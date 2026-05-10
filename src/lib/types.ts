@@ -75,6 +75,14 @@ export interface Instability {
     cape_jkg: number | null; // Convective Available Potential Energy
 }
 
+export interface Geo {
+    // Direction FROM click point TO nearest ocean probe point that has elevation == 0.
+    // null if no ocean within the 4-probe ring (~55 km) or click is on ocean itself.
+    ocean_nearby_compass: string | null;
+    ocean_bearing_deg: number | null;    // numeric bearing for wind-direction math
+    ocean_distance_km: number | null;
+}
+
 export interface Marine {
     swell_wave_height: number | null;    // m
     swell_wave_direction: number | null; // degrees
@@ -94,6 +102,7 @@ export interface Facts {
     air_quality: AirQuality;
     instability: Instability;
     marine: Marine | null;  // null if Marine API unavailable (inland, error)
+    geo: Geo;               // coastline proximity from 4-point elevation probe
 }
 
 // =====================================================================

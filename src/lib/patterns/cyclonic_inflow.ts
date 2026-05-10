@@ -69,10 +69,36 @@ function visual(_map: any, _facts: Facts, _params: Params): () => void {
     return () => {};
 }
 
-function content(_facts: Facts, p: Params) {
+function content(facts: Facts, p: Params) {
     const compass = compassPhrase(p.low.compass);
     const dist = `${p.low.distance_km.toLocaleString()} km`;
     const rotation = p.hemisphere === 'N' ? 'counterclockwise' : 'clockwise';
+
+    // High-confidence tropical-cyclone branch: low pressure < 985 hPa + tropical latitude.
+    const isTropical = Math.abs(facts.location.lat) < 30 && p.low.pressure_hPa < 985;
+    if (isTropical) {
+        return {
+            title: 'Why this is a tropical cyclone',
+            mechanism:
+                `You're looking at a tropical cyclone — central pressure around ${Math.round(p.low.pressure_hPa)} hPa, ` +
+                `about ${dist} ${compass}. Warm ocean water (>26 °C) feeds rising air, which condenses, releases heat, ` +
+                `and accelerates the rotation. The lower the central pressure, the more energy the system has organised. ` +
+                `${p.hemisphere === 'N' ? 'Northern' : 'Southern'} Hemisphere rotation is ${rotation}.`,
+            checkNext: [
+                {
+                    label: 'Toggle Pressure: see how tightly the contours wrap around the eye',
+                    overlay: 'pressure' as WindyOverlay,
+                },
+                {
+                    label: 'Toggle Rain: spiral rain bands wrap outward from the eyewall',
+                    overlay: 'rain' as WindyOverlay,
+                },
+            ],
+            remember:
+                'Surface pressure below 950 hPa is severe (Category 3+); below 920 hPa is rare and catastrophic. ' +
+                'The eye itself is calm — the danger is the eyewall around it.',
+        };
+    }
 
     return {
         title: 'Why the wind curls here',

@@ -21,6 +21,7 @@ import jet_stream from './jet_stream';
 import orographic_rain from './orographic_rain';
 import radar_satellite_mismatch from './radar_satellite_mismatch';
 import rain_in_a_line from './rain_in_a_line';
+import sea_breeze from './sea_breeze';
 import sharp_temperature_line from './sharp_temperature_line';
 import swell_vs_wind from './swell_vs_wind';
 import tight_gradient from './tight_gradient';
@@ -38,6 +39,7 @@ const MODULES: PatternModule<any>[] = [
     wind_gust_factor,
     orographic_rain,
     swell_vs_wind,
+    sea_breeze,
 ];
 
 export interface DispatchResult {
@@ -86,7 +88,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',            layerHint: 'Gust layer' },
     { id: 'orographic_rain',          title: 'Orographic rain & rain shadow',                    layerHint: 'Rain layer (elevated terrain)' },
     { id: 'swell_vs_wind',            title: 'Swell vs wind waves (distant storm energy)',       layerHint: 'Waves or Swell layer' },
-    // #8 sea breeze intentionally deferred to v2 — detection requires coastline-awareness not yet implemented.
+    { id: 'sea_breeze',               title: 'Sea breeze (afternoon onshore flow)',              layerHint: 'Wind or Gust layer (coastal, afternoon)' },
 ];
 
 export { MODULES };
