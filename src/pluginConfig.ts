@@ -7,7 +7,7 @@ const config: ExternalPluginConfig = {
     title: 'Weather Why',
     description:
         "Click any spot on any Windy layer (wind, rain, pressure, jet stream, satellite, CAPE, dust, waves, more) and find out why the weather there is doing what it's doing. Each click yields a short hand-written card that names the pattern, explains the mechanism, and toggles to a related layer so you can verify what you're seeing.",
-    author: 'ajin',
+    author: 'ajin.im',
     repository: 'https://github.com/mobetter20/windy-plugin-weather-why',
     desktopUI: 'rhpane',
     mobileUI: 'fullscreen',
