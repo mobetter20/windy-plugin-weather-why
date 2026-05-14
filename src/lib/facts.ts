@@ -63,7 +63,7 @@ function fetchSurfaceAndHistory(lat: number, lon: number, signal?: AbortSignal):
         hourly: [
             'temperature_2m', 'pressure_msl', 'wind_speed_10m',
             'wind_direction_10m', 'precipitation', 'relative_humidity_2m',
-            'cape',
+            'cape', 'visibility',
         ].join(','),
         past_hours: '24',
         forecast_hours: '24',
@@ -146,6 +146,13 @@ function fetchMarine(lat: number, lon: number, signal?: AbortSignal): Promise<an
 function extractSurface(wx: any): SurfaceFacts {
     const c = wx?.current ?? {};
     const wd = c.wind_direction_10m;
+    // Visibility is an hourly-only Open-Meteo field; index 24 == "now"
+    // (past_hours=24), the same convention extractInstability uses for CAPE.
+    const visArr = wx?.hourly?.visibility;
+    const visibility_m =
+        Array.isArray(visArr) && visArr.length > 24 && typeof visArr[24] === 'number'
+            ? visArr[24]
+            : null;
     return {
         temperature_C: c.temperature_2m ?? null,
         apparent_temperature_C: c.apparent_temperature ?? null,
@@ -159,6 +166,7 @@ function extractSurface(wx: any): SurfaceFacts {
         wind_compass: wd != null ? compass8(wd) : null,
         cloud_cover_pct: c.cloud_cover ?? null,
         precipitation_mm: c.precipitation ?? null,
+        visibility_m,
         elevation_m: wx?.elevation ?? null,
     };
 }

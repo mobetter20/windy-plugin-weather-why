@@ -72,14 +72,11 @@
                 </p>
             {:else}
                 <p>
-                    The {layerLabel(currentLayer)} layer isn't covered yet.
+                    The {layerLabel(currentLayer)} layer isn't one Weather Why covers.
                 </p>
                 <p class="ww-fallback-detail">
-                    I'll know what to say about waves, dust, air quality, and the rest in
-                    upcoming phases. For now the covered layers are <strong>Wind</strong>,
-                    <strong>Pressure</strong>, <strong>Rain</strong>, <strong>Radar</strong>,
-                    <strong>Temperature</strong>, <strong>Satellite</strong>, and <strong>CAPE</strong> —
-                    switch to one of those and try again.
+                    Weather Why reads {coveredLayerLabels.length} layers — switch to any of
+                    these and try again: {coveredLayerLabels.join(', ')}.
                 </p>
             {/if}
         </div>
@@ -121,6 +118,9 @@
     const supportedLayers = getSupportedLayers();
     const defaultedLayers = getDefaultedLayers();
     const coveredLayers = new Set<WindyOverlay>([...supportedLayers, ...defaultedLayers]);
+    // Human-readable labels for every covered layer — derived so the fallback
+    // copy below can't go stale when a pattern or layer-default is added.
+    const coveredLayerLabels = [...coveredLayers].map(layerLabel).sort();
 
     let isLoading = false;
     let facts: Facts | null = null;

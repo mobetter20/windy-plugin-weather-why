@@ -9,10 +9,10 @@
 // / remember) so the UI doesn't need a special render path. Same tone (B,
 // substantive, no folk-philosophy).
 //
-// Coverage in v1: wind (also gust), pressure, rain, temp, satellite, radar,
-// cape, waves, and air-quality layers (cAQI, pm2p5, pm10, dust).
-// Other layers (clouds, cloudtop, visibility) fall through to the
-// "this layer not yet supported" message.
+// Coverage: wind (also gust), pressure, rain (also rainAccu), radar, temp,
+// satellite, clouds (also cloudtop), cape, waves (also swell), visibility,
+// and air-quality layers (cAQI, pm2p5, pm10, dust) — every overlay in the
+// WindyOverlay union. Unknown Windy overlays fall through to the UI fallback.
 
 import type { DetectContext, Facts, PatternCard, WindyOverlay } from '../types';
 
@@ -259,15 +259,118 @@ const air_quality_default: DefaultFn = (f, _ctx) => {
     };
 };
 
+const radar_default: DefaultFn = (f, _ctx) => {
+    const obs = f.surface.precipitation_mm;
+    const obsPhrase =
+        obs != null && obs > 0.05
+            ? `Right here, about ${obs.toFixed(1)} mm/h of precipitation is being observed now.`
+            : 'No precipitation is being observed right at this point currently.';
+    return {
+        title: "What you're seeing",
+        mechanism:
+            `Radar shows precipitation that is actually falling right now — energy bounced ` +
+            `back from raindrops, snow, and hail. Unlike the Rain layer, which is model ` +
+            `forecast, this is an observation. ${obsPhrase} Brighter colors mean heavier ` +
+            `precipitation; a band that moves between frames is usually a front or a line of showers.`,
+        checkNext: [
+            {
+                label: "Toggle Rain: compare what's observed now against the model forecast",
+                overlay: 'rain',
+            },
+            {
+                label: 'Toggle Satellite: see the cloud structure the precipitation is falling from',
+                overlay: 'satellite',
+            },
+        ],
+        remember:
+            'Radar is observation, but not flawless — coverage thins over oceans and behind ' +
+            'mountains, and the beam can overshoot shallow rain far from the station.',
+    };
+};
+
+const clouds_default: DefaultFn = (f, ctx) => {
+    const c = f.surface.cloud_cover_pct;
+    const cloudPhrase =
+        c != null
+            ? `Cloud cover here is about ${Math.round(c)}%.`
+            : 'Local cloud-cover data is unavailable here.';
+    const isCloudtop = ctx.activeLayer === 'cloudtop';
+    return {
+        title: "What you're seeing",
+        mechanism: isCloudtop
+            ? `The cloud-top layer shows how high — and how cold — the tops of clouds reach. ` +
+              `High, cold tops mean deep convection: cumulonimbus towering toward the tropopause. ` +
+              `Low, warm tops are shallow stratus or fog. ${cloudPhrase} Here it's the height of ` +
+              `the top, not the amount of cover, that signals how strong the system is.`
+            : `The cloud layer shows how much of the sky is filled with cloud. Clouds form where ` +
+              `air rises and cools to its dew point, and clear where air sinks and warms. ${cloudPhrase} ` +
+              `Cover alone doesn't tell you about rain — thick cloud can be dry, thin cloud can drizzle.`,
+        checkNext: [
+            {
+                label: 'Toggle Radar: see whether these clouds are actually producing precipitation',
+                overlay: 'radar',
+            },
+            {
+                label: 'Toggle Satellite: see the cloud structure as observed from space',
+                overlay: 'satellite',
+            },
+        ],
+        remember: isCloudtop
+            ? 'Cloud-top height is model output. Very cold tops — roughly below −60 °C — are the ' +
+              'signature of strong thunderstorms; cross-check with CAPE and radar.'
+            : 'Cloud cover is model output, not an observation. Satellite shows the actual cloud ' +
+              'field — the two often disagree at the edges.',
+    };
+};
+
+const visibility_default: DefaultFn = (f, _ctx) => {
+    const v = f.surface.visibility_m;
+    let visPhrase: string;
+    if (v != null) {
+        const km = v / 1000;
+        if (km >= 20) visPhrase = `Visibility here is about ${Math.round(km)} km — clear air.`;
+        else if (km >= 10) visPhrase = `Visibility here is about ${Math.round(km)} km — good.`;
+        else if (km >= 4) visPhrase = `Visibility here is about ${km.toFixed(1)} km — hazy or lightly misty.`;
+        else if (km >= 1)
+            visPhrase = `Visibility here is about ${km.toFixed(1)} km — fog, haze, or precipitation is cutting it down.`;
+        else visPhrase = 'Visibility here is under 1 km — dense fog or heavy precipitation.';
+    } else {
+        visPhrase = 'Local visibility data is unavailable here.';
+    }
+    return {
+        title: "What you're seeing",
+        mechanism:
+            `The visibility layer shows how far you could see at the surface. It drops when ` +
+            `something fills the air: fog and mist (water droplets), haze and dust (particles), ` +
+            `or heavy rain and snow. ${visPhrase} The sharpest gradients usually trace the edge ` +
+            `of a fog bank or a front.`,
+        checkNext: [
+            {
+                label: 'Toggle Air Quality: haze-driven visibility loss shows up as elevated particulates',
+                overlay: 'cAQI',
+            },
+            {
+                label: 'Toggle Radar: precipitation is a common visibility-killer',
+                overlay: 'radar',
+            },
+        ],
+        remember:
+            'Visibility is model output. Fog is especially hard to model — it forms and burns ' +
+            'off on local scales the model can miss.',
+    };
+};
+
 const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     wind: wind_default,
     gust: wind_default,         // shares the wind explanation
     pressure: pressure_default,
     rain: rain_default,
     rainAccu: rain_default,     // shares the rain explanation
-    radar: rain_default,        // close enough for v0.1; radar-specific framing later
+    radar: radar_default,
     temp: temp_default,
     satellite: satellite_default,
+    clouds: clouds_default,
+    cloudtop: clouds_default,   // shares clouds_default; it branches on ctx.activeLayer
     cape: cape_default,
     waves: waves_default,
     swell1: waves_default,      // same explanation for all swell layers
@@ -276,6 +379,7 @@ const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     pm2p5: air_quality_default,
     pm10: air_quality_default,
     dust: air_quality_default,
+    visibility: visibility_default,
 };
 
 export function getLayerDefault(

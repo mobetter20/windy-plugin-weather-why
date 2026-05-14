@@ -19,6 +19,7 @@ export interface SurfaceFacts {
     wind_compass: string | null;
     cloud_cover_pct: number | null;
     precipitation_mm: number | null;
+    visibility_m: number | null;   // surface visibility in metres (Open-Meteo hourly field)
     elevation_m: number | null;    // terrain elevation at click point (from Open-Meteo top-level field)
 }
 
