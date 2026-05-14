@@ -60,13 +60,30 @@ function detect(facts: Facts, ctx: DetectContext) {
     };
 }
 
-function visual(_map: any, _facts: Facts, _params: Params): () => void {
-    // No map glyphs in v0.1. Windy's wind layer already carries the visualization
-    // — the streamline pattern IS the visible swirl. Past iterations added click
-    // markers and a "Low" badge, but they read as Windy-native UI rather than
-    // plugin-specific. Cleaner: nothing on the map; the side-pane card carries
-    // the explanation, with location distance/bearing baked into the prose.
-    return () => {};
+function visual(map: any, _facts: Facts, params: Params): () => void {
+    // Mark the low's centre so the user can see WHERE the system is, relative to
+    // where they clicked — the card prose carries distance/bearing, this anchors
+    // it on the map. Styled as a plugin-coded chip (.ww-map-glyph in plugin.svelte),
+    // deliberately not a Windy-native pin/badge: the earlier v0.1 attempt was
+    // dropped (commit 9fc032a) for reading as host UI. The bar is "obviously
+    // plugin, or nothing."
+    const low = params.low;
+    if (!Number.isFinite(low.lat) || !Number.isFinite(low.lon)) return () => {};
+
+    const marker = new L.Marker(
+        { lat: low.lat, lng: low.lon },
+        {
+            icon: new L.DivIcon({
+                className: 'ww-map-glyph-icon',
+                html: '<div class="ww-map-glyph ww-map-glyph--low">Low</div>',
+                iconSize: [40, 18],
+                iconAnchor: [20, 9],
+            }),
+            interactive: false,
+        },
+    ).addTo(map);
+
+    return () => marker.remove();
 }
 
 function content(facts: Facts, p: Params) {

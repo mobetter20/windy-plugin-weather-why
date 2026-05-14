@@ -499,4 +499,33 @@
         from { opacity: 0; transform: translateY(2px); }
         to   { opacity: 1; transform: translateY(0); }
     }
+
+    // ---------- Map glyphs (plugin annotations drawn onto Windy's map) ----------
+    // Injected into Leaflet's DOM outside the Svelte component tree, so styled
+    // via :global. Text inherits Windy's theme color; the tint + hairline match
+    // the card system so the glyph reads as plugin UI — never as a Windy-native
+    // control. (The v0.1 "Low" badge was dropped for exactly that failure mode.)
+
+    :global(.ww-map-glyph-icon) {
+        background: transparent;   // reset Leaflet's default white DivIcon box
+        border: 0;
+    }
+
+    :global(.ww-map-glyph) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 0 0.5em;
+        background: rgba(127, 127, 127, 0.2);
+        border: 1px solid rgba(127, 127, 127, 0.36);
+        border-radius: 0.5em;
+        color: inherit;            // inherit Windy's theme primary — light + dark
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        opacity: 0.9;
+    }
 </style>
