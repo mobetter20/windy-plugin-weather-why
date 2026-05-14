@@ -105,6 +105,7 @@
 
     import config from './pluginConfig';
     import { fetchFacts } from './lib/facts';
+    import { initViewportMarkers } from './lib/viewport_markers';
     import {
         pickPattern,
         getSupportedLayers,
@@ -131,6 +132,7 @@
         | { id: string; location: LatLon; layer: WindyOverlay; card: PatternCard }
         | null = null;
     let visualCleanup: (() => void) | null = null;
+    let viewportCleanup: (() => void) | null = null;
     let inflight: AbortController | null = null;
 
     async function runFlow(loc: LatLon) {
@@ -243,6 +245,9 @@
 
     onMount(() => {
         singleclick.on(name, runFlow);
+        // Proactive lows/highs markers — clickable hints for where the pressure
+        // stories are. A marker click reuses the normal click flow (runFlow).
+        viewportCleanup = initViewportMarkers(map, runFlow);
     });
 
     onDestroy(() => {
@@ -253,6 +258,10 @@
         if (visualCleanup) {
             visualCleanup();
             visualCleanup = null;
+        }
+        if (viewportCleanup) {
+            viewportCleanup();
+            viewportCleanup = null;
         }
         singleclick.off(name, runFlow);
     });
@@ -527,5 +536,16 @@
         text-transform: uppercase;
         white-space: nowrap;
         opacity: 0.9;
+    }
+
+    :global(.ww-map-glyph--clickable) {
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    :global(.ww-map-glyph--clickable:hover) {
+        background: rgba(127, 127, 127, 0.32);
+        border-color: rgba(127, 127, 127, 0.55);
+        opacity: 1;
     }
 </style>

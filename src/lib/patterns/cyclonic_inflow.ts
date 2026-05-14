@@ -12,6 +12,7 @@
 // (closer or more pronounced) than the nearest high. Confidence weights
 // distance, depth, and dominance.
 
+import { makeGlyphMarker } from '../mapglyph';
 import type { DetectContext, Facts, PatternModule, PressureFeature, WindyOverlay } from '../types';
 
 interface Params {
@@ -63,26 +64,11 @@ function detect(facts: Facts, ctx: DetectContext) {
 function visual(map: any, _facts: Facts, params: Params): () => void {
     // Mark the low's centre so the user can see WHERE the system is, relative to
     // where they clicked — the card prose carries distance/bearing, this anchors
-    // it on the map. Styled as a plugin-coded chip (.ww-map-glyph in plugin.svelte),
-    // deliberately not a Windy-native pin/badge: the earlier v0.1 attempt was
-    // dropped (commit 9fc032a) for reading as host UI. The bar is "obviously
-    // plugin, or nothing."
+    // it on the map. Passive (non-clickable) plugin-coded chip; see mapglyph.ts
+    // for the styling rationale (commit 9fc032a: "obviously plugin, or nothing").
     const low = params.low;
     if (!Number.isFinite(low.lat) || !Number.isFinite(low.lon)) return () => {};
-
-    const marker = new L.Marker(
-        { lat: low.lat, lng: low.lon },
-        {
-            icon: new L.DivIcon({
-                className: 'ww-map-glyph-icon',
-                html: '<div class="ww-map-glyph ww-map-glyph--low">Low</div>',
-                iconSize: [40, 18],
-                iconAnchor: [20, 9],
-            }),
-            interactive: false,
-        },
-    ).addTo(map);
-
+    const marker = makeGlyphMarker(low.lat, low.lon, 'Low', 'low').addTo(map);
     return () => marker.remove();
 }
 

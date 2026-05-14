@@ -89,14 +89,24 @@ function fetchUpperAir(lat: number, lon: number, signal?: AbortSignal): Promise<
     return getJson(`${FORECAST_URL}?${params}`, signal);
 }
 
-function fetchPressureGrid(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
-    const n = Math.floor(GRID_RADIUS_DEG / GRID_STEP_DEG); // 3 → 7×7=49
+// `signal` stays the 3rd arg so the existing fetchFacts caller is untouched;
+// radiusDeg/stepDeg are optional and default to the click-scale grid. Callers
+// (viewport_markers) pass a viewport-scaled radius with step held at radius/3
+// so the point count stays 7×7=49 — the proven request size — at any zoom.
+export function fetchPressureGrid(
+    lat: number,
+    lon: number,
+    signal?: AbortSignal,
+    radiusDeg: number = GRID_RADIUS_DEG,
+    stepDeg: number = GRID_STEP_DEG,
+): Promise<any> {
+    const n = Math.floor(radiusDeg / stepDeg); // radius:step ~3:1 → 7×7=49
     const lats: number[] = [];
     const lons: number[] = [];
     for (let di = -n; di <= n; di++) {
         for (let dj = -n; dj <= n; dj++) {
-            lats.push(clampLat(Math.round((lat + di * GRID_STEP_DEG) * 1e4) / 1e4));
-            lons.push(wrapLon(Math.round((lon + dj * GRID_STEP_DEG) * 1e4) / 1e4));
+            lats.push(clampLat(Math.round((lat + di * stepDeg) * 1e4) / 1e4));
+            lons.push(wrapLon(Math.round((lon + dj * stepDeg) * 1e4) / 1e4));
         }
     }
     const params = new URLSearchParams({
@@ -258,7 +268,7 @@ function extractUpperAir(ua: any): UpperAir {
     };
 }
 
-function findSynopticFeatures(grid: any, centerLat: number, centerLon: number): SynopticFacts {
+export function findSynopticFeatures(grid: any, centerLat: number, centerLon: number): SynopticFacts {
     const points: Array<{ lat: number; lon: number; pressure: number }> = [];
     const arr: any[] = Array.isArray(grid) ? grid : [grid];
     for (const p of arr) {
