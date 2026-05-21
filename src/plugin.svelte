@@ -721,13 +721,29 @@
     }
 
     :global(.ww-map-glyph--clickable) {
+        position: relative;        // anchor the enlarged hit-area pseudo-element
         cursor: pointer;
         transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+    }
+
+    // Expand the touch/click target to >=44px tall (WCAG 2.5.5) WITHOUT changing
+    // the 44x18 visual or the Leaflet anchor — a transparent pseudo-element does it.
+    :global(.ww-map-glyph--clickable::before) {
+        content: '';
+        position: absolute;
+        inset: -13px 0;            // 18px visual + 2x13px = 44px touch height
     }
 
     :global(.ww-map-glyph--clickable:hover) {
         background: rgba(127, 127, 127, 0.32);
         border-color: rgba(127, 127, 127, 0.55);
+        opacity: 1;
+    }
+
+    // Visible keyboard-focus ring, theme-inheriting via currentColor.
+    :global(.ww-map-glyph--clickable:focus-visible) {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
         opacity: 1;
     }
 </style>

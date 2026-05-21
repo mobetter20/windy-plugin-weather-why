@@ -27,18 +27,37 @@ export function makeGlyphMarker(
     const interactive = typeof onClick === 'function';
     const cls =
         `ww-map-glyph ww-map-glyph--${kind}` + (interactive ? ' ww-map-glyph--clickable' : '');
+    // a11y: a clickable marker is a keyboard-focusable button (activation wired
+    // below); a passive marker is just a labelled image.
+    const a11y = interactive
+        ? ` role="button" tabindex="0" aria-label="${label} pressure centre — open its explanation"`
+        : ` role="img" aria-label="${label} pressure centre"`;
     const marker = new L.Marker(
         { lat, lng: lon },
         {
             icon: new L.DivIcon({
                 className: 'ww-map-glyph-icon',
-                html: `<div class="${cls}">${label}</div>`,
+                html: `<div class="${cls}"${a11y}>${label}</div>`,
                 iconSize: [44, 18],
                 iconAnchor: [22, 9],
             }),
             interactive,
         },
     );
-    if (onClick) marker.on('click', onClick);
+    if (onClick) {
+        marker.on('click', onClick);
+        // Keyboard parity: Enter/Space on the focused marker runs the same flow.
+        // (Leaflet's own marker keyboarding is limited; wire it on the element.)
+        marker.on('add', () => {
+            const el = marker.getElement();
+            if (!el) return;
+            el.addEventListener('keydown', (ev: KeyboardEvent) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    onClick();
+                }
+            });
+        });
+    }
     return marker;
 }
