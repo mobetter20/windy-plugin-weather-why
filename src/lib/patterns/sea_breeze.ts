@@ -11,7 +11,7 @@
 // moderate speed (5–25 km/h), and afternoon local time (11–19 h).
 // Confidence weights all four signals.
 
-import { compass8, initialBearingDeg } from '../geo';
+import { angularDiff, localHourFromUtc } from '../geo';
 import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types';
 
 interface Params {
@@ -19,16 +19,6 @@ interface Params {
     oceanDistanceKm: number;
     windSpeedKmh: number;
     localHour: number;
-}
-
-function angularDiff(a: number, b: number): number {
-    return ((a - b + 540) % 360) - 180;
-}
-
-function localHourFromUtc(isoString: string, lonDeg: number): number {
-    const utcHour = new Date(isoString).getUTCHours();
-    const offsetH = lonDeg / 15;
-    return ((utcHour + offsetH) % 24 + 24) % 24;
 }
 
 function detect(facts: Facts, ctx: DetectContext) {

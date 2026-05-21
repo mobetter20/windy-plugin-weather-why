@@ -38,3 +38,16 @@ export function compass8(bearing: number): string {
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return dirs[Math.floor((bearing + 22.5) / 45) % 8];
 }
+
+// Smallest signed angle a - b, in (-180, 180]. Used for onshore/offshore wind
+// tests (wind direction vs the bearing to the coast).
+export function angularDiff(a: number, b: number): number {
+    return ((a - b + 540) % 360) - 180;
+}
+
+// Local hour (0-24, fractional) from a UTC ISO timestamp + longitude — a rough
+// timezone proxy, good enough for "is it overnight / afternoon here".
+export function localHourFromUtc(isoString: string, lonDeg: number): number {
+    const utcHour = new Date(isoString).getUTCHours();
+    return (((utcHour + lonDeg / 15) % 24) + 24) % 24;
+}

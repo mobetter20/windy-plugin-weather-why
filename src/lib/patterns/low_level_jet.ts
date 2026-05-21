@@ -10,17 +10,13 @@
 //
 // Detection: active wind level is 850h/925h AND 850 hPa wind > ~55 km/h.
 
+import { localHourFromUtc } from '../geo';
 import type { DetectContext, Facts, PatternModule } from '../types';
 
 interface Params {
     speedKmh: number;
     directionDeg: number | null;
     nocturnal: boolean;
-}
-
-function localHourFromUtc(isoString: string, lonDeg: number): number {
-    const utcHour = new Date(isoString).getUTCHours();
-    return (((utcHour + lonDeg / 15) % 24) + 24) % 24;
 }
 
 function detect(facts: Facts, ctx: DetectContext) {
