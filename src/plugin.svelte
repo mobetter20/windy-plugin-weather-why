@@ -8,10 +8,44 @@
         on:click={() => bcast.emit('rqstOpen', 'menu')}
     >
         <span class="ww-header-mark">WEATHER · WHY</span>
+        <button
+            class="ww-catalog-toggle"
+            type="button"
+            title="What Weather Why can explain"
+            on:click|stopPropagation={toggleCatalog}
+        >{showCatalog ? 'close' : 'all patterns'}</button>
     </div>
     <div class="ww-header-rule"></div>
 
-    {#if error}
+    {#if showCoachmark}
+        <div class="ww-coachmark">
+            <p>
+                Click anywhere on the map and Weather Why names the pattern you're looking at.
+                Each <strong>Check next</strong> button switches the live map layer — so you can
+                verify the explanation with your own eyes.
+            </p>
+            <button
+                class="ww-coachmark-dismiss"
+                type="button"
+                aria-label="Dismiss tip"
+                on:click={dismissCoachmark}
+            >×</button>
+        </div>
+    {/if}
+
+    {#if showCatalog}
+        <div class="ww-state ww-state--intro ww-state--catalog">
+            <button class="ww-back-link" type="button" on:click={toggleCatalog}>← back</button>
+            <div class="ww-intro-hint">
+                <div class="ww-intro-hint-label">Everything Weather Why can explain</div>
+                <ul>
+                    {#each CATALOG as p}
+                        <li><strong>{p.title}</strong> <span class="ww-intro-layer">— {p.layerHint}</span></li>
+                    {/each}
+                </ul>
+            </div>
+        </div>
+    {:else if error}
         <div class="ww-state ww-state--error">
             <p>Couldn't read the sky just now.</p>
             <p class="ww-error-help">
@@ -30,6 +64,12 @@
         </div>
     {:else if pattern && facts}
         <div class="ww-card">
+            <span
+                class="ww-badge {pattern.id === 'layer_default'
+                    ? 'ww-badge--default'
+                    : 'ww-badge--pattern'}"
+            >{pattern.id === 'layer_default' ? 'Layer basics' : '✓ Pattern'}</span>
+
             <div class="ww-meta">
                 {fmtCoords(pattern.location)}
                 <span class="ww-meta-sep">·</span>
@@ -38,17 +78,23 @@
 
             <h2 class="ww-card-title">{pattern.card.title}</h2>
 
+            {#if schematic}
+                <div class="ww-schematic">{@html schematic}</div>
+            {/if}
+
             <p class="ww-card-mechanism">{pattern.card.mechanism}</p>
 
             <div class="ww-card-section">
-                <div class="ww-section-label">Check next</div>
+                <div class="ww-section-label">
+                    Check next <span class="ww-section-hint">— switches the map layer</span>
+                </div>
                 {#each pattern.card.checkNext as cn}
                     <button
                         class="ww-toggle-button"
                         on:click={() => switchLayer(cn.overlay)}
                         type="button"
                     >
-                        <span class="ww-toggle-arrow">→</span>
+                        <span class="ww-toggle-arrow">⇄</span>
                         <span class="ww-toggle-text">{cn.label}</span>
                     </button>
                 {/each}
@@ -113,6 +159,7 @@
         getDefaultedLayers,
         CATALOG,
     } from './lib/patterns';
+    import { getSchematic } from './lib/schematics';
     import type { DetectContext, Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
 
     const { name, title } = config;
@@ -134,6 +181,12 @@
     let visualCleanup: (() => void) | null = null;
     let viewportCleanup: (() => void) | null = null;
     let inflight: AbortController | null = null;
+
+    // Phase 3 card-UX state.
+    let showCatalog = false;        // the persistent "what I can explain" view
+    let coachmarkDismissed = false; // first-run verify-loop tip (localStorage-gated)
+    $: schematic = pattern && pattern.id !== 'layer_default' ? getSchematic(pattern.id) : null;
+    $: showCoachmark = !coachmarkDismissed && !showCatalog;
 
     async function runFlow(loc: LatLon) {
         // Abort any prior in-flight fetch — rapid clicks shouldn't pile up
@@ -207,6 +260,19 @@
         store.set('overlay', overlay);
     }
 
+    function toggleCatalog() {
+        showCatalog = !showCatalog;
+    }
+
+    function dismissCoachmark() {
+        coachmarkDismissed = true;
+        try {
+            localStorage.setItem('ww-coachmark-seen', '1');
+        } catch {
+            // localStorage can throw (private mode / iOS) — fine, it just won't persist.
+        }
+    }
+
     function fmtCoords(loc: LatLon): string {
         return `${loc.lat.toFixed(2)}°, ${loc.lon.toFixed(2)}°`;
     }
@@ -244,6 +310,11 @@
     };
 
     onMount(() => {
+        try {
+            coachmarkDismissed = localStorage.getItem('ww-coachmark-seen') === '1';
+        } catch {
+            // localStorage unavailable (private mode / iOS) — just show the tip.
+        }
         singleclick.on(name, runFlow);
         // Proactive lows/highs markers — clickable hints for where the pressure
         // stories are. A marker click reuses the normal click flow (runFlow).
@@ -502,6 +573,117 @@
         font-size: 0.88em;
         line-height: 1.55;
         opacity: 0.7;
+    }
+
+    // ---------- Phase 3: badge / schematic / discoverability / catalogue ----------
+
+    .ww-badge {
+        display: inline-block;
+        margin-bottom: 0.7em;
+        padding: 0.2em 0.62em;
+        border-radius: 0.4em;
+        font-size: 0.64em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        border: 1px solid rgba(127, 127, 127, 0.3);
+    }
+
+    .ww-badge--pattern {
+        opacity: 0.92;
+        background: rgba(127, 127, 127, 0.16);
+    }
+
+    .ww-badge--default {
+        opacity: 0.5;
+        background: transparent;
+        font-style: italic;
+        letter-spacing: 0.08em;
+    }
+
+    .ww-schematic {
+        margin: 0 0 1.25em;
+
+        :global(svg) {
+            display: block;
+            width: 96px;
+            height: auto;
+            opacity: 0.78;
+        }
+    }
+
+    .ww-section-hint {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 400;
+        opacity: 0.8;
+    }
+
+    // Give the "Remember" caveat a touch more presence — a hairline, not volume.
+    .ww-card-remember {
+        border-top: 1px solid rgba(127, 127, 127, 0.18);
+        padding-top: 1.05em;
+    }
+
+    .ww-coachmark {
+        position: relative;
+        margin: 0 0 1.15em;
+        padding: 0.8em 2.1em 0.8em 0.95em;
+        background: rgba(127, 127, 127, 0.1);
+        border: 1px solid rgba(127, 127, 127, 0.2);
+        border-radius: 0.55em;
+        font-size: 0.86em;
+        line-height: 1.5;
+
+        p { margin: 0; opacity: 0.85; }
+    }
+
+    .ww-coachmark-dismiss {
+        position: absolute;
+        top: 0.35em;
+        right: 0.5em;
+        padding: 0.15em 0.4em;
+        background: none;
+        border: 0;
+        color: inherit;
+        font-family: inherit;
+        font-size: 1.15em;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.5;
+
+        &:hover { opacity: 0.9; }
+    }
+
+    .ww-catalog-toggle {
+        margin-left: auto;            // push to the right edge of the header flex row
+        padding: 0.2em 0.5em;
+        background: none;
+        border: 0;
+        color: inherit;
+        font-family: inherit;
+        font-size: 0.7em;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        opacity: 0.55;
+        transition: opacity 0.15s;
+
+        &:hover { opacity: 0.95; }
+    }
+
+    .ww-back-link {
+        margin: 0 0 0.9em;
+        padding: 0;
+        background: none;
+        border: 0;
+        color: inherit;
+        font-family: inherit;
+        font-size: 0.82em;
+        cursor: pointer;
+        opacity: 0.65;
+
+        &:hover { opacity: 0.95; }
     }
 
     @keyframes ww-fade-in {
