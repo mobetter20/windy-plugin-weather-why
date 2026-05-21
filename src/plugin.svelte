@@ -228,10 +228,9 @@
             waves: 'Waves',
             swell1: 'Swell 1',
             swell2: 'Swell 2',
-            cAQI: 'Air Quality',
+            aqi: 'Air Quality',
             pm2p5: 'PM2.5',
-            pm10: 'PM10',
-            dust: 'Dust',
+            dustsm: 'Dust',
             visibility: 'Visibility',
         };
         return labels[o] ?? o;

@@ -1,8 +1,8 @@
 // Pattern: stagnation / inversion (local pollution build-up).
 //
 // Visible cue: elevated particulates on an air-quality layer that sit over an
-// area rather than streaming from an upwind source. Trigger layers: cAQI,
-// PM2.5, PM10.
+// area rather than streaming from an upwind source. Trigger layers: aqi,
+// PM2.5.
 //
 // Mechanism: a high parked overhead makes air sink and surface winds go light,
 // often with a temperature inversion capping the lowest layer like a lid. With
@@ -81,7 +81,7 @@ function content(_facts: Facts, p: Params) {
 
 const stagnation_inversion: PatternModule<Params> = {
     id: 'stagnation_inversion',
-    appliesToLayers: ['cAQI', 'pm2p5', 'pm10'],
+    appliesToLayers: ['aqi', 'pm2p5'],
     detect,
     visual,
     content,

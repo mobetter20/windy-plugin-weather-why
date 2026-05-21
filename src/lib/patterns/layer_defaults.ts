@@ -11,7 +11,7 @@
 //
 // Coverage: wind (also gust), pressure, rain (also rainAccu), radar, temp,
 // satellite, clouds (also cloudtop), cape, waves (also swell), visibility,
-// and air-quality layers (cAQI, pm2p5, pm10, dust) — every overlay in the
+// and air-quality layers (aqi, pm2p5, dustsm) — every overlay in the
 // WindyOverlay union. Unknown Windy overlays fall through to the UI fallback.
 
 import type { DetectContext, Facts, PatternCard, WindyOverlay } from '../types';
@@ -347,7 +347,7 @@ const visibility_default: DefaultFn = (f, _ctx) => {
         checkNext: [
             {
                 label: 'Toggle Air Quality: haze-driven visibility loss shows up as elevated particulates',
-                overlay: 'cAQI',
+                overlay: 'aqi',
             },
             {
                 label: 'Toggle Radar: precipitation is a common visibility-killer',
@@ -375,10 +375,9 @@ const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     waves: waves_default,
     swell1: waves_default,      // same explanation for all swell layers
     swell2: waves_default,
-    cAQI: air_quality_default,
+    aqi: air_quality_default,
     pm2p5: air_quality_default,
-    pm10: air_quality_default,
-    dust: air_quality_default,
+    dustsm: air_quality_default,
     visibility: visibility_default,
 };
 

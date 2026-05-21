@@ -135,7 +135,7 @@ export type WindyOverlay =
     | 'wind' | 'gust' | 'rain' | 'rainAccu' | 'radar' | 'satellite'
     | 'pressure' | 'temp' | 'clouds' | 'cloudtop' | 'cape'
     | 'waves' | 'swell1' | 'swell2'
-    | 'cAQI' | 'pm2p5' | 'pm10' | 'dust' | 'visibility';
+    | 'aqi' | 'pm2p5' | 'dustsm' | 'visibility';
 
 // Context passed to pattern detectors: which Windy overlay is active, and
 // (for wind layers) which pressure level — 'surface' / '850h' / '500h' /

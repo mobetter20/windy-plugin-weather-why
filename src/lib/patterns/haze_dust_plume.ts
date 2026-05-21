@@ -1,7 +1,7 @@
 // Pattern: haze or dust plume visible on an air-quality layer.
 //
-// Visible cue: colored blobs on Windy's cAQI, pm2p5, pm10, or dust layer.
-// Trigger layers: 'cAQI', 'pm2p5', 'pm10', 'dust'.
+// Visible cue: colored blobs on Windy's aqi, pm2p5, or dustsm layer.
+// Trigger layers: 'aqi', 'pm2p5', 'dustsm'.
 //
 // Mechanism: aerosols are carried downwind from source regions — deserts,
 // wildfires, industrial belts. The plume shape on the map IS the lower-
@@ -95,7 +95,7 @@ function content(_facts: Facts, p: Params) {
 
 const haze_dust_plume: PatternModule<Params> = {
     id: 'haze_dust_plume',
-    appliesToLayers: ['cAQI', 'pm2p5', 'pm10', 'dust'],
+    appliesToLayers: ['aqi', 'pm2p5', 'dustsm'],
     detect,
     visual,
     content,
