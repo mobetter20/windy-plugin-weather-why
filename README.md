@@ -1,6 +1,6 @@
 # windy-plugin-weather-why
 
-A Windy.com plugin that turns the weather on the map into a moment of genuine understanding. Click any spot on any Windy layer (wind, rain, pressure, temperature, satellite, CAPE, gust, AQ, dust, waves, radar, clouds). The plugin recognises the visual pattern you're looking at and explains it in a four-beat card:
+A Windy.com plugin that turns the weather on the map into a moment of genuine understanding. Click any spot on any Windy layer (wind, rain, pressure, temperature, satellite, CAPE, gust, AQ, dust, waves, radar, clouds, visibility, fog). The plugin recognises the visual pattern you're looking at and explains it in a four-beat card:
 
 > **Title** → 2–3 sentence **mechanism** → **Check next:** clickable cross-layer toggles → **Remember:** model-vs-observation caveat
 
@@ -8,22 +8,27 @@ The "Check next" buttons actually flip Windy's layer so you can confirm the expl
 
 ## What it recognises
 
-13 patterns + a "What you're seeing" fallback on covered layers:
+17 patterns + a "What you're seeing" fallback on covered layers:
 
 | Pattern | Trigger layer |
 |---|---|
-| Cyclonic inflow around a low (+ tropical-cyclone override for sub-985-hPa systems in the tropics) | Wind (surface) |
-| Strong wind in a tight pressure gradient | Wind |
+| Cyclonic inflow around a low (+ tropical-cyclone override for sub-985-hPa systems in the tropics) | Wind / Gust (surface) |
+| Strong wind in a tight pressure gradient | Wind / Gust (surface) |
+| Jet stream | Wind / Gust (250h / 300h) |
+| Low-level jet (fast nocturnal wind aloft) | Wind / Gust (850h / 925h) |
+| Sea breeze (afternoon onshore flow) | Wind / Gust (coastal) |
+| High gust factor (gusts ≫ sustained) | Gust |
 | Rain in a line (front / squall) | Rain, RainAccu, Radar |
+| Orographic rain & rain shadow | Rain, RainAccu, Radar (elevated terrain) |
+| Wintry mix (rain / snow / ice near 0 °C) | Rain, RainAccu, Radar, Temperature |
 | CAPE present but the sky is quiet (cap / CIN) | CAPE |
 | Clouds without rain (virga, cirrus, cloud shield) | Radar, Satellite, Clouds, Cloudtop |
 | Sharp temperature line (front signature) | Temperature |
-| Jet stream | Wind 250h / 300h |
-| Haze / dust plume (regional transport) | cAQI, PM2.5, PM10, Dust |
-| High gust factor | Gust |
-| Orographic rain & rain shadow | Rain (elevated terrain) |
+| Heat building under a blocking ridge (heat dome) | Temperature, Pressure |
+| Haze / dust plume (regional transport) | Air Quality, PM2.5, Dust |
+| Air stagnation under a high (inversion) | Air Quality, PM2.5 |
 | Swell vs wind waves (distant-storm energy) | Waves, Swell |
-| Sea breeze (afternoon onshore flow) | Wind (coastal) |
+| Fog (radiation / advection) | Visibility, Fog |
 
 When no specific pattern fires on a covered layer, a "What you're seeing" card explains the layer + local data point.
 
@@ -31,7 +36,7 @@ When no specific pattern fires on a covered layer, a "What you're seeing" card e
 
 - Pure client-side. Svelte + TypeScript. No backend.
 - Data: [Open-Meteo](https://open-meteo.com/) (forecast, upper air, marine, air quality). Keyless, free.
-- Build size: ~52 KB minified.
+- Build size: ~65 KB minified.
 
 ## Dev loop
 
@@ -73,16 +78,21 @@ src/
         │                         #   CATALOG, getLayerDefault
         ├── cyclonic_inflow.ts    # + tropical-cyclone override
         ├── tight_gradient.ts
+        ├── jet_stream.ts
+        ├── low_level_jet.ts
+        ├── sea_breeze.ts
+        ├── wind_gust_factor.ts
         ├── rain_in_a_line.ts
+        ├── orographic_rain.ts
+        ├── wintry_mix.ts
         ├── cape_no_storms.ts
         ├── radar_satellite_mismatch.ts
         ├── sharp_temperature_line.ts
-        ├── jet_stream.ts
+        ├── heat_dome.ts
         ├── haze_dust_plume.ts
-        ├── wind_gust_factor.ts
-        ├── orographic_rain.ts
+        ├── stagnation_inversion.ts
         ├── swell_vs_wind.ts
-        ├── sea_breeze.ts
+        ├── fog.ts
         └── layer_defaults.ts     # "What you're seeing" cards per layer
 ```
 

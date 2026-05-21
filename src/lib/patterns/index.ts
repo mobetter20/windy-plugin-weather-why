@@ -16,6 +16,7 @@ import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types
 
 import cape_no_storms from './cape_no_storms';
 import cyclonic_inflow from './cyclonic_inflow';
+import fog from './fog';
 import haze_dust_plume from './haze_dust_plume';
 import heat_dome from './heat_dome';
 import jet_stream from './jet_stream';
@@ -29,12 +30,17 @@ import stagnation_inversion from './stagnation_inversion';
 import swell_vs_wind from './swell_vs_wind';
 import tight_gradient from './tight_gradient';
 import wind_gust_factor from './wind_gust_factor';
+import wintry_mix from './wintry_mix';
 
 const MODULES: PatternModule<any>[] = [
     cyclonic_inflow,
     jet_stream,
     low_level_jet,
     tight_gradient,
+    // wintry_mix before rain_in_a_line + orographic_rain: in the near-freezing
+    // core zone confidences can tie at 1.0, and pickPattern's strict-> tie-break
+    // goes to MODULES order — the freezing-rain hazard should win, not "rain".
+    wintry_mix,
     rain_in_a_line,
     cape_no_storms,
     radar_satellite_mismatch,
@@ -46,6 +52,7 @@ const MODULES: PatternModule<any>[] = [
     orographic_rain,
     swell_vs_wind,
     sea_breeze,
+    fog,
 ];
 
 export interface DispatchResult {
@@ -88,6 +95,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'jet_stream',               title: 'Jet stream',                                layerHint: 'Wind layer at 250h or 300h' },
     { id: 'low_level_jet',            title: 'Low-level jet (fast nocturnal wind aloft)', layerHint: 'Wind layer at 850h' },
     { id: 'rain_in_a_line',           title: 'Rain in a line (front / squall)',           layerHint: 'Rain or Radar layer' },
+    { id: 'wintry_mix',               title: 'Wintry mix (rain, snow, or ice near 0°C)',  layerHint: 'Rain, Radar, or Temperature layer' },
     { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
     { id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer' },
     { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',               layerHint: 'Temperature layer' },
@@ -98,6 +106,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'orographic_rain',          title: 'Orographic rain & rain shadow',                    layerHint: 'Rain layer (elevated terrain)' },
     { id: 'swell_vs_wind',            title: 'Swell vs wind waves (distant storm energy)',       layerHint: 'Waves or Swell layer' },
     { id: 'sea_breeze',               title: 'Sea breeze (afternoon onshore flow)',              layerHint: 'Wind or Gust layer (coastal, afternoon)' },
+    { id: 'fog',                      title: 'Fog (radiation or advection)',                     layerHint: 'Visibility or Fog layer' },
 ];
 
 export { MODULES };

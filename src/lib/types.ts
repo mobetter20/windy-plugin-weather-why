@@ -129,13 +129,19 @@ export interface PatternCard {
     remember: string;     // 1 short sentence on caveat / model vs obs
 }
 
-// Subset of Windy's overlay key strings we currently care about.
-// Source: examples in windy-plugin-template (store.set('overlay', 'wind') etc.)
-export type WindyOverlay =
-    | 'wind' | 'gust' | 'rain' | 'rainAccu' | 'radar' | 'satellite'
-    | 'pressure' | 'temp' | 'clouds' | 'cloudtop' | 'cape'
-    | 'waves' | 'swell1' | 'swell2'
-    | 'aqi' | 'pm2p5' | 'dustsm' | 'visibility';
+// The subset of Windy's canonical overlay keys we handle. Kept as a runtime
+// `as const` array (not just a type) so the WindyOverlay type AND tests derive
+// from ONE source — a hand-copied parallel list is exactly how the cAQI/dust/pm10
+// dead-key bug crept in. Every key here must exist in Windy's canonical overlays
+// (node_modules/@windycom/plugin-devtools/types/client/rootScope.d.ts:72).
+export const WINDY_OVERLAYS = [
+    'wind', 'gust', 'rain', 'rainAccu', 'radar', 'satellite',
+    'pressure', 'temp', 'clouds', 'cloudtop', 'cape',
+    'waves', 'swell1', 'swell2',
+    'aqi', 'pm2p5', 'dustsm', 'visibility', 'fog',
+] as const;
+
+export type WindyOverlay = (typeof WINDY_OVERLAYS)[number];
 
 // Context passed to pattern detectors: which Windy overlay is active, and
 // (for wind layers) which pressure level — 'surface' / '850h' / '500h' /

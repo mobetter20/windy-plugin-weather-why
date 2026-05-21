@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import cyclonic_inflow from '../cyclonic_inflow';
+import orographic_rain from '../orographic_rain';
 import { getSupportedLayers, pickPattern } from '../index';
 import { makeCtx, makeFacts } from './helpers';
 
@@ -80,5 +81,31 @@ describe('pickPattern dispatcher', () => {
         for (const dead of ['cAQI', 'dust', 'pm10']) {
             expect(layers).not.toContain(dead);
         }
+    });
+
+    it('routes fog on both the visibility and fog layers', () => {
+        const facts = makeFacts({
+            surface: { visibility_m: 200, humidity_pct: 97, wind_speed_kmh: 5 },
+        });
+        for (const layer of ['visibility', 'fog'] as const) {
+            expect(pickPattern(makeCtx({ activeLayer: layer }), facts).module?.id).toBe('fog');
+        }
+    });
+
+    it('wintry_mix outranks orographic_rain in the near-freezing core (tie-break by order)', () => {
+        // Snowy 1,600 m pass, 0°C, 6 mm forecast: BOTH detectors reach confidence
+        // 1.0. The freezing-rain hazard must win, not "terrain squeezing out rain".
+        const facts = makeFacts({
+            surface: { elevation_m: 1600, temperature_C: 0 },
+            forecast_24h: { precip_total_mm: 6 },
+        });
+        const ctx = makeCtx({ activeLayer: 'rain' });
+
+        const orographic = orographic_rain.detect(facts, ctx);
+        expect(orographic.active).toBe(true); // a genuine overlap, not a walkover
+
+        const r = pickPattern(ctx, facts);
+        expect(r.module?.id).toBe('wintry_mix');
+        expect(r.confidence).toBeGreaterThanOrEqual(orographic.confidence);
     });
 });

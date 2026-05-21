@@ -232,6 +232,7 @@
             pm2p5: 'PM2.5',
             dustsm: 'Dust',
             visibility: 'Visibility',
+            fog: 'Fog',
         };
         return labels[o] ?? o;
     }

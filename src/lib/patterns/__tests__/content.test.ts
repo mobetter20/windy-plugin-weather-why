@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { WINDY_OVERLAYS } from '../../types';
 import type { DetectContext, Facts, PatternModule } from '../../types';
 import { makeCtx, makeFacts } from './helpers';
 
 import cape_no_storms from '../cape_no_storms';
 import cyclonic_inflow from '../cyclonic_inflow';
+import fog from '../fog';
 import haze_dust_plume from '../haze_dust_plume';
 import heat_dome from '../heat_dome';
 import jet_stream from '../jet_stream';
@@ -18,15 +20,12 @@ import stagnation_inversion from '../stagnation_inversion';
 import swell_vs_wind from '../swell_vs_wind';
 import tight_gradient from '../tight_gradient';
 import wind_gust_factor from '../wind_gust_factor';
+import wintry_mix from '../wintry_mix';
 
-// Every key in the WindyOverlay union (types.ts). A checkNext button pointing
-// anywhere outside this set is a dead "Toggle …" CTA — the same class of bug as
-// the cAQI/dust/pm10 overlay-key regression, so the card content guards it too.
-const VALID_OVERLAYS = new Set([
-    'wind', 'gust', 'rain', 'rainAccu', 'radar', 'satellite', 'pressure', 'temp',
-    'clouds', 'cloudtop', 'cape', 'waves', 'swell1', 'swell2', 'aqi', 'pm2p5',
-    'dustsm', 'visibility',
-]);
+// Derived from the single WINDY_OVERLAYS source of truth (types.ts) — NOT a
+// hand-copied list, which is exactly how the cAQI/dust/pm10 dead-key bug crept
+// in. A checkNext button pointing outside this set is a dead "Toggle …" CTA.
+const VALID_OVERLAYS = new Set<string>(WINDY_OVERLAYS);
 
 interface Row {
     name: string;
@@ -172,6 +171,23 @@ const FIRING: Row[] = [
             geo: { ocean_nearby_compass: 'W', ocean_bearing_deg: 270, ocean_distance_km: 20 },
         }),
         ctx: makeCtx({ activeLayer: 'wind', level: 'surface' }),
+    },
+    {
+        name: 'fog',
+        mod: fog,
+        facts: makeFacts({
+            surface: { visibility_m: 200, humidity_pct: 97, wind_speed_kmh: 5 },
+        }),
+        ctx: makeCtx({ activeLayer: 'visibility' }),
+    },
+    {
+        name: 'wintry_mix',
+        mod: wintry_mix,
+        facts: makeFacts({
+            surface: { temperature_C: 0 },
+            forecast_24h: { precip_total_mm: 5 },
+        }),
+        ctx: makeCtx({ activeLayer: 'rain' }),
     },
 ];
 

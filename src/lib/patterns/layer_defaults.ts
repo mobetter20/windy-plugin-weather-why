@@ -10,8 +10,8 @@
 // substantive, no folk-philosophy).
 //
 // Coverage: wind (also gust), pressure, rain (also rainAccu), radar, temp,
-// satellite, clouds (also cloudtop), cape, waves (also swell), visibility,
-// and air-quality layers (aqi, pm2p5, dustsm) — every overlay in the
+// satellite, clouds (also cloudtop), cape, waves (also swell), visibility
+// (also fog), and air-quality layers (aqi, pm2p5, dustsm) — every overlay in the
 // WindyOverlay union. Unknown Windy overlays fall through to the UI fallback.
 
 import type { DetectContext, Facts, PatternCard, WindyOverlay } from '../types';
@@ -379,6 +379,7 @@ const LAYER_DEFAULTS: Partial<Record<WindyOverlay, DefaultFn>> = {
     pm2p5: air_quality_default,
     dustsm: air_quality_default,
     visibility: visibility_default,
+    fog: visibility_default, // shares the visibility default (same surface field; copy already covers fog)
 };
 
 export function getLayerDefault(
