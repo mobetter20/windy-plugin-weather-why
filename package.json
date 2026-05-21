@@ -16,7 +16,7 @@
         "example06": "CONFIG=example06 rollup -w -c",
         "example07": "CONFIG=example07 rollup -w -c",
         "build:all-examples": "for number in 01 02 03 04 05 06; do CONFIG=example$number SERVE=false rollup -c; done",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "vitest run"
     },
     "repository": {
         "type": "git",
@@ -35,5 +35,8 @@
     "homepage": "https://docs.windy-plugins.com/",
     "dependencies": {
         "@windycom/plugin-devtools": "^3.0.3"
+    },
+    "devDependencies": {
+        "vitest": "^4.1.7"
     }
 }
