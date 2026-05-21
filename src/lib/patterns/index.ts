@@ -17,12 +17,15 @@ import type { DetectContext, Facts, PatternModule, WindyOverlay } from '../types
 import cape_no_storms from './cape_no_storms';
 import cyclonic_inflow from './cyclonic_inflow';
 import haze_dust_plume from './haze_dust_plume';
+import heat_dome from './heat_dome';
 import jet_stream from './jet_stream';
+import low_level_jet from './low_level_jet';
 import orographic_rain from './orographic_rain';
 import radar_satellite_mismatch from './radar_satellite_mismatch';
 import rain_in_a_line from './rain_in_a_line';
 import sea_breeze from './sea_breeze';
 import sharp_temperature_line from './sharp_temperature_line';
+import stagnation_inversion from './stagnation_inversion';
 import swell_vs_wind from './swell_vs_wind';
 import tight_gradient from './tight_gradient';
 import wind_gust_factor from './wind_gust_factor';
@@ -30,12 +33,15 @@ import wind_gust_factor from './wind_gust_factor';
 const MODULES: PatternModule<any>[] = [
     cyclonic_inflow,
     jet_stream,
+    low_level_jet,
     tight_gradient,
     rain_in_a_line,
     cape_no_storms,
     radar_satellite_mismatch,
     sharp_temperature_line,
+    heat_dome,
     haze_dust_plume,
+    stagnation_inversion,
     wind_gust_factor,
     orographic_rain,
     swell_vs_wind,
@@ -80,11 +86,14 @@ export const CATALOG: PatternCatalogEntry[] = [
     { id: 'cyclonic_inflow',          title: 'Wind curling around a low',                 layerHint: 'Wind layer (surface)' },
     { id: 'tight_gradient',           title: 'Strong wind in a tight pressure gradient',  layerHint: 'Wind layer (surface)' },
     { id: 'jet_stream',               title: 'Jet stream',                                layerHint: 'Wind layer at 250h or 300h' },
+    { id: 'low_level_jet',            title: 'Low-level jet (fast nocturnal wind aloft)', layerHint: 'Wind layer at 850h' },
     { id: 'rain_in_a_line',           title: 'Rain in a line (front / squall)',           layerHint: 'Rain or Radar layer' },
     { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
     { id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer' },
     { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',               layerHint: 'Temperature layer' },
+    { id: 'heat_dome',                title: 'Heat building under a blocking ridge',             layerHint: 'Temperature or Pressure layer' },
     { id: 'haze_dust_plume',          title: 'Haze or dust plume',                               layerHint: 'Air quality layer (cAQI, PM2.5, PM10, dust)' },
+    { id: 'stagnation_inversion',     title: 'Air stagnation under a high (inversion)',          layerHint: 'Air quality layer (cAQI, PM2.5, PM10)' },
     { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',            layerHint: 'Gust layer' },
     { id: 'orographic_rain',          title: 'Orographic rain & rain shadow',                    layerHint: 'Rain layer (elevated terrain)' },
     { id: 'swell_vs_wind',            title: 'Swell vs wind waves (distant storm energy)',       layerHint: 'Waves or Swell layer' },

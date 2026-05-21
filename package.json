@@ -1,6 +1,6 @@
 {
     "name": "windy-plugin-weather-why",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Click anywhere on a Windy map and find out why the weather there is doing what it's doing.",
     "main": "dist/plugin.min.js",
     "type": "module",
