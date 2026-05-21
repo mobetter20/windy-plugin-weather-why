@@ -50,6 +50,26 @@ async function getJson(url: string, signal?: AbortSignal): Promise<any> {
     return r.json();
 }
 
+// Without a timeout, a single hanging request stalls the whole card indefinitely
+// (a .catch only handles rejection, not a hang). Essentials reject after a long
+// ceiling — turning an endless "Reading the sky…" into a prompt, recoverable
+// error. Optionals (slower/flakier secondary hosts) degrade to null instead of
+// blocking; the detectors already treat missing air-quality/marine as unavailable.
+const ESSENTIAL_TIMEOUT_MS = 12_000;
+const OPTIONAL_TIMEOUT_MS = 2_500;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`request timed out after ${ms}ms`)), ms);
+    });
+    return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
+function optional<T>(p: Promise<T>, ms: number = OPTIONAL_TIMEOUT_MS): Promise<T | null> {
+    return withTimeout(p, ms).catch(() => null);
+}
+
 function fetchSurfaceAndHistory(lat: number, lon: number, signal?: AbortSignal): Promise<any> {
     const params = new URLSearchParams({
         latitude: String(lat),
@@ -394,12 +414,15 @@ function extractInstability(wx: any): Instability {
 
 export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal): Promise<Facts> {
     const [wx, ua, grid, aq, marineRaw, probeRaw] = await Promise.all([
-        fetchSurfaceAndHistory(lat, lon, signal),
-        fetchUpperAir(lat, lon, signal),
-        fetchPressureGrid(lat, lon, signal),
-        fetchAirQuality(lat, lon, signal),
-        fetchMarine(lat, lon, signal).catch(() => null),      // null for inland/error
-        fetchOceanProbe(lat, lon, signal).catch(() => null),  // null if API fails
+        withTimeout(fetchSurfaceAndHistory(lat, lon, signal), ESSENTIAL_TIMEOUT_MS),
+        withTimeout(fetchUpperAir(lat, lon, signal), ESSENTIAL_TIMEOUT_MS),
+        withTimeout(fetchPressureGrid(lat, lon, signal), ESSENTIAL_TIMEOUT_MS),
+        // Air quality + marine sit on slower, flakier secondary hosts and aren't
+        // needed for most clicks — cap them so a slow/hanging one can't stall the
+        // card. They degrade to null; the ocean probe likewise.
+        optional(fetchAirQuality(lat, lon, signal)),
+        optional(fetchMarine(lat, lon, signal)),
+        optional(fetchOceanProbe(lat, lon, signal)),
     ]);
     const surface = extractSurface(wx);
     return {
@@ -410,7 +433,7 @@ export async function fetchFacts(lat: number, lon: number, signal?: AbortSignal)
         forecast_24h: summarizeForecast(wx.hourly ?? {}),
         upper_air: extractUpperAir(ua),
         synoptic: findSynopticFeatures(grid, lat, lon),
-        air_quality: extractAirQuality(aq),
+        air_quality: aq != null ? extractAirQuality(aq) : { pm2_5: null, pm10: null, european_aqi: null },
         instability: extractInstability(wx),
         marine: marineRaw != null ? extractMarine(marineRaw) : null,
         geo: extractGeo(probeRaw, lat, lon, surface.elevation_m, surface.wind_direction_deg),

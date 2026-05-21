@@ -7,31 +7,9 @@
         class="plugin__title plugin__title--chevron-back ww-header"
         on:click={() => bcast.emit('rqstOpen', 'menu')}
     >
-        <span class="ww-header-mark">WEATHER · WHY</span>
-        <button
-            class="ww-catalog-toggle"
-            type="button"
-            title="What Weather Why can explain"
-            on:click|stopPropagation={toggleCatalog}
-        >{showCatalog ? 'close' : 'all patterns'}</button>
+        <span class="ww-header-mark">WEATHER <span class="ww-accent-dot">·</span> WHY</span>
     </div>
     <div class="ww-header-rule"></div>
-
-    {#if showCoachmark}
-        <div class="ww-coachmark">
-            <p>
-                Click anywhere on the map and Weather Why names the pattern you're looking at.
-                Each <strong>Check next</strong> button switches the live map layer — so you can
-                verify the explanation with your own eyes.
-            </p>
-            <button
-                class="ww-coachmark-dismiss"
-                type="button"
-                aria-label="Dismiss tip"
-                on:click={dismissCoachmark}
-            >×</button>
-        </div>
-    {/if}
 
     {#if showCatalog}
         <div class="ww-state ww-state--intro ww-state--catalog">
@@ -78,11 +56,10 @@
 
             <h2 class="ww-card-title">{pattern.card.title}</h2>
 
-            {#if schematic}
-                <div class="ww-schematic">{@html schematic}</div>
+            <p class="ww-card-lead">{mechLead}</p>
+            {#if mechDetail}
+                <p class="ww-card-mechanism">{mechDetail}</p>
             {/if}
-
-            <p class="ww-card-mechanism">{pattern.card.mechanism}</p>
 
             <div class="ww-card-section">
                 <div class="ww-section-label">
@@ -94,7 +71,7 @@
                         on:click={() => switchLayer(cn.overlay)}
                         type="button"
                     >
-                        <span class="ww-toggle-arrow">⇄</span>
+                        <span class="ww-toggle-arrow">→</span>
                         <span class="ww-toggle-text">{cn.label}</span>
                     </button>
                 {/each}
@@ -128,15 +105,18 @@
         </div>
     {:else}
         <div class="ww-state ww-state--intro">
-            <p class="ww-intro-instruction"><em>click any spot on any layer</em></p>
-            <div class="ww-intro-hint">
-                <div class="ww-intro-hint-label">Patterns I recognise so far:</div>
-                <ul>
-                    {#each CATALOG as p}
-                        <li><strong>{p.title}</strong> <span class="ww-intro-layer">— {p.layerHint}</span></li>
-                    {/each}
-                </ul>
-            </div>
+            <p class="ww-intro-lede">
+                Click anywhere on the map — and find out <em>why</em> the weather there is
+                doing what it's doing.
+            </p>
+            <p class="ww-intro-sub">
+                Wind, rain, temperature, air quality, waves and more. {CATALOG.length} patterns,
+                each with the mechanism behind it and a one-tap way to check it against a
+                related layer.
+            </p>
+            <button class="ww-intro-cta" type="button" on:click={toggleCatalog}>
+                See all {CATALOG.length} patterns →
+            </button>
         </div>
     {/if}
 </section>
@@ -159,7 +139,6 @@
         getDefaultedLayers,
         CATALOG,
     } from './lib/patterns';
-    import { getSchematic } from './lib/schematics';
     import type { DetectContext, Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
 
     const { name, title } = config;
@@ -182,11 +161,15 @@
     let viewportCleanup: (() => void) | null = null;
     let inflight: AbortController | null = null;
 
-    // Phase 3 card-UX state.
-    let showCatalog = false;        // the persistent "what I can explain" view
-    let coachmarkDismissed = false; // first-run verify-loop tip (localStorage-gated)
-    $: schematic = pattern && pattern.id !== 'layer_default' ? getSchematic(pattern.id) : null;
-    $: showCoachmark = !coachmarkDismissed && !showCatalog;
+    let showCatalog = false; // the "what I can explain" catalogue view
+
+    // Split the mechanism into a punchy lead sentence + the rest, so the card
+    // reads as lead-then-detail instead of one dense block.
+    function splitMechanism(m: string): [string, string] {
+        const i = m.indexOf('. ');
+        return i > 0 && i < m.length - 2 ? [m.slice(0, i + 1), m.slice(i + 2)] : [m, ''];
+    }
+    $: [mechLead, mechDetail] = pattern ? splitMechanism(pattern.card.mechanism) : ['', ''];
 
     async function runFlow(loc: LatLon) {
         // Abort any prior in-flight fetch — rapid clicks shouldn't pile up
@@ -264,15 +247,6 @@
         showCatalog = !showCatalog;
     }
 
-    function dismissCoachmark() {
-        coachmarkDismissed = true;
-        try {
-            localStorage.setItem('ww-coachmark-seen', '1');
-        } catch {
-            // localStorage can throw (private mode / iOS) — fine, it just won't persist.
-        }
-    }
-
     function fmtCoords(loc: LatLon): string {
         return `${loc.lat.toFixed(2)}°, ${loc.lon.toFixed(2)}°`;
     }
@@ -310,11 +284,6 @@
     };
 
     onMount(() => {
-        try {
-            coachmarkDismissed = localStorage.getItem('ww-coachmark-seen') === '1';
-        } catch {
-            // localStorage unavailable (private mode / iOS) — just show the tip.
-        }
         singleclick.on(name, runFlow);
         // Proactive lows/highs markers — clickable hints for where the pressure
         // stories are. A marker click reuses the normal click flow (runFlow).
@@ -346,6 +315,11 @@
 
     // ---------- Header (replaces default plugin__title styling) ----------
 
+    // Single accent — one mid-tone blue that stays legible on Windy's light AND
+    // dark backgrounds. Used ONLY on interactive / status bits, never body text.
+    // Tune here if it reads weak in either theme.
+    @accent: #2e7dc4;
+
     .ww-header {
         // Selector specificity beats Windy's own .plugin__title rules
         // without using !important.
@@ -362,6 +336,12 @@
         text-transform: uppercase;     // belt-and-braces in case the title
                                        // string ever changes case
         opacity: 0.92;
+    }
+
+    .ww-accent-dot {
+        color: @accent;
+        font-weight: 700;
+        opacity: 1;
     }
 
     .ww-header-rule {
@@ -420,15 +400,23 @@
 
     .ww-card-title {
         margin: 0 0 0.85em;
-        font-size: 1.3em;
+        font-size: 1.35em;
         font-weight: 600;
         line-height: 1.3;
-        letter-spacing: -0.005em;
+        letter-spacing: -0.01em;
+    }
+
+    .ww-card-lead {
+        margin: 0 0 0.85em;
+        font-size: 1.02em;
+        line-height: 1.6;
+        font-weight: 500;
     }
 
     .ww-card-mechanism {
         margin: 0 0 1.4em;
-        font-size: 0.97em;
+        font-size: 0.92em;
+        line-height: 1.72;
     }
 
     .ww-card-section {
@@ -468,7 +456,7 @@
         .ww-toggle-arrow {
             flex-shrink: 0;
             font-weight: 700;
-            opacity: 0.7;
+            opacity: 0.5;
         }
 
         .ww-toggle-text { flex: 1; }
@@ -590,8 +578,9 @@
     }
 
     .ww-badge--pattern {
-        opacity: 0.92;
-        background: rgba(127, 127, 127, 0.16);
+        color: @accent;
+        border-color: fade(@accent, 45%);
+        background: fade(@accent, 12%);
     }
 
     .ww-badge--default {
@@ -656,20 +645,23 @@
     }
 
     .ww-catalog-toggle {
-        margin-left: auto;            // push to the right edge of the header flex row
-        padding: 0.2em 0.5em;
-        background: none;
-        border: 0;
+        flex-shrink: 0;               // never let it squeeze or wrap the wordmark
+        margin-left: auto;            // sit at the right edge of the header flex row
+        padding: 0.3em 0.7em;
+        background: rgba(127, 127, 127, 0.14);
+        border: 1px solid rgba(127, 127, 127, 0.3);
+        border-radius: 0.45em;
         color: inherit;
         font-family: inherit;
-        font-size: 0.7em;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+        font-size: 11px;              // FIXED, not em — the title's base font is large
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
         cursor: pointer;
-        opacity: 0.55;
-        transition: opacity 0.15s;
+        opacity: 0.85;
+        transition: background 0.15s, opacity 0.15s;
 
-        &:hover { opacity: 0.95; }
+        &:hover { opacity: 1; background: rgba(127, 127, 127, 0.24); }
     }
 
     .ww-back-link {
@@ -684,6 +676,54 @@
         opacity: 0.65;
 
         &:hover { opacity: 0.95; }
+    }
+
+    // ---------- Intro redesign: hero + value-prop + CTA ----------
+
+    .ww-intro-hero {
+        margin: 0.4em 0 1.2em;
+
+        :global(svg) {
+            width: 116px;
+            height: auto;
+            opacity: 0.45;
+        }
+    }
+
+    .ww-intro-lede {
+        margin: 0 0 0.75em;
+        font-size: 1.18em;
+        line-height: 1.45;
+        font-weight: 500;
+        opacity: 0.95;
+
+        em { font-style: italic; }
+    }
+
+    .ww-intro-sub {
+        margin: 0 0 1.35em;
+        font-size: 0.92em;
+        line-height: 1.55;
+        opacity: 0.68;
+    }
+
+    .ww-intro-cta {
+        width: 100%;
+        padding: 0.72em 1em;
+        background: rgba(127, 127, 127, 0.14);
+        border: 1px solid rgba(127, 127, 127, 0.3);
+        border-radius: 0.5em;
+        color: inherit;
+        font-family: inherit;
+        font-size: 0.95em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+
+        &:hover {
+            background: rgba(127, 127, 127, 0.24);
+            border-color: rgba(127, 127, 127, 0.45);
+        }
     }
 
     @keyframes ww-fade-in {
