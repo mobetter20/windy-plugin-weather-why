@@ -13,8 +13,7 @@
 
     {#if showCatalog}
         <div class="ww-state ww-state--catalog">
-            <button class="ww-back-link" type="button" on:click={toggleCatalog}>← back</button>
-            <div class="ww-cat-sublabel">Tap a pattern — the map shows it</div>
+            <div class="ww-cat-sublabel">Tap a pattern · the map explains it</div>
 
             <div class="ww-cat-group">
                 <span class="ww-cat-group-pin">📍</span>
@@ -64,6 +63,7 @@
         </div>
     {:else if error}
         <div class="ww-state ww-state--error">
+            <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
             <p>Couldn't read the sky just now.</p>
             <p class="ww-error-help">
                 A weather data request didn't come back. Open-Meteo (the source) sometimes
@@ -81,6 +81,7 @@
         </div>
     {:else if pattern && facts}
         <div class="ww-card">
+            <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
             <span
                 class="ww-badge {pattern.id === 'layer_default'
                     ? 'ww-badge--default'
@@ -126,6 +127,7 @@
         </div>
     {:else if facts && !pattern}
         <div class="ww-state ww-state--fallback">
+            <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
             <div class="ww-coords">{fmtCoords(facts.location)}</div>
             {#if currentLayerSupported}
                 <p>
@@ -144,21 +146,6 @@
                     these and try again: {coveredLayerLabels.join(', ')}.
                 </p>
             {/if}
-        </div>
-    {:else}
-        <div class="ww-state ww-state--intro">
-            <p class="ww-intro-lede">
-                Click anywhere on the map — and find out <em>why</em> the weather there is
-                doing what it's doing.
-            </p>
-            <p class="ww-intro-sub">
-                Wind, rain, temperature, air quality, waves and more. {CATALOG.length} patterns,
-                each with the mechanism behind it and a one-tap way to check it against a
-                related layer.
-            </p>
-            <button class="ww-intro-cta" type="button" on:click={toggleCatalog}>
-                See all {CATALOG.length} patterns →
-            </button>
         </div>
     {/if}
 </section>
@@ -211,7 +198,7 @@
     let viewportCleanup: (() => void) | null = null;
     let inflight: AbortController | null = null;
 
-    let showCatalog = false; // the "what I can explain" catalogue view
+    let showCatalog = true; // catalogue is the home screen
 
     // Map-tour state: when set, the pane shrinks to a one-line caption while the
     // switched layer (+ optional fly-to marker) does the teaching. `flew` drives
@@ -239,6 +226,7 @@
             visualCleanup();
             visualCleanup = null;
         }
+        showCatalog = false;
         // A real click ends any active map tour — clear its caption + marker so
         // the card (and the pattern's own visual) take over cleanly.
         tour = null;
@@ -476,8 +464,14 @@
         showCatalog = true; // back to the catalogue; leave the map where it is
     }
 
-    function toggleCatalog() {
-        showCatalog = !showCatalog;
+    function backToHome() {
+        if (inflight) { inflight.abort(); inflight = null; }
+        if (visualCleanup) { visualCleanup(); visualCleanup = null; }
+        pattern = null;
+        facts = null;
+        error = null;
+        isLoading = false;
+        showCatalog = true;
     }
 
     function fmtCoords(loc: LatLon): string {
@@ -935,44 +929,6 @@
         opacity: 0.65;
 
         &:hover { opacity: 0.95; }
-    }
-
-    // ---------- Intro: value-prop + CTA ----------
-
-    .ww-intro-lede {
-        margin: 0 0 0.75em;
-        font-size: 1.18em;
-        line-height: 1.45;
-        font-weight: 500;
-        opacity: 0.95;
-
-        em { font-style: italic; }
-    }
-
-    .ww-intro-sub {
-        margin: 0 0 1.35em;
-        font-size: 0.92em;
-        line-height: 1.55;
-        opacity: 0.68;
-    }
-
-    .ww-intro-cta {
-        width: 100%;
-        padding: 0.72em 1em;
-        background: rgba(127, 127, 127, 0.14);
-        border: 1px solid rgba(127, 127, 127, 0.3);
-        border-radius: 0.5em;
-        color: inherit;
-        font-family: inherit;
-        font-size: 0.95em;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-
-        &:hover {
-            background: rgba(127, 127, 127, 0.24);
-            border-color: rgba(127, 127, 127, 0.45);
-        }
     }
 
     @keyframes ww-fade-in {
