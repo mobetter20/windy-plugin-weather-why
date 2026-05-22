@@ -5,7 +5,7 @@
 <section class="plugin__content ww-content">
     <div
         class="plugin__title plugin__title--chevron-back ww-header"
-        on:click={() => bcast.emit('rqstOpen', 'menu')}
+        on:click={() => (showCatalog ? bcast.emit('rqstOpen', 'menu') : backToHome())}
     >
         <span class="ww-header-mark">WEATHER <span class="ww-accent-dot">·</span> WHY</span>
     </div>
@@ -918,17 +918,23 @@
     }
 
     .ww-back-link {
-        margin: 0 0 0.9em;
-        padding: 0;
-        background: none;
-        border: 0;
+        display: inline-flex;
+        align-items: center;
+        margin: 0 0 1em;
+        padding: 0.38em 0.75em;
+        background: rgba(127, 127, 127, 0.12);
+        border: 1px solid rgba(127, 127, 127, 0.28);
+        border-radius: 0.45em;
         color: inherit;
         font-family: inherit;
         font-size: 0.82em;
         cursor: pointer;
-        opacity: 0.65;
+        transition: background 0.15s, border-color 0.15s;
 
-        &:hover { opacity: 0.95; }
+        &:hover {
+            background: rgba(127, 127, 127, 0.22);
+            border-color: rgba(127, 127, 127, 0.44);
+        }
     }
 
     @keyframes ww-fade-in {
