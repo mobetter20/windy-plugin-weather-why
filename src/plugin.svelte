@@ -64,11 +64,10 @@
     {:else if error}
         <div class="ww-state ww-state--error">
             <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
-            <p>Couldn't read the sky just now.</p>
+            <p>Couldn't load weather data.</p>
             <p class="ww-error-help">
-                A weather data request didn't come back. Open-Meteo (the source) sometimes
-                rate-limits rapid clicks on the free tier. Try clicking somewhere else, or
-                wait a moment and try again.
+                The data source may be temporarily slow or unavailable. Try again in a moment,
+                or click somewhere else on the map.
             </p>
             <details class="ww-error-details">
                 <summary>technical detail</summary>
