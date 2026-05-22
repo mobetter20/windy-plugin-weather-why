@@ -86,27 +86,109 @@ export interface PatternCatalogEntry {
     id: string;
     title: string;
     layerHint: string;
+    // --- map-tour fields (catalogue → map tour) ---
+    // Overlay the tour switches to. MUST be in this pattern's appliesToLayers,
+    // else a post-switch click would dead-end — the catalog test enforces it.
+    overlay: WindyOverlay;
+    // Wind level to set alongside the overlay; only the wind-level patterns
+    // need it (jet 250h, low-level jet 850h, surface flows 'surface').
+    level?: string;
+    // Tier 1: fly to + mark a live pressure feature. Absent => tier 2, which
+    // only switches the layer and guides the eye.
+    locate?: 'low' | 'high' | 'gradient';
+    // Eye-guide caption for tier 2, and the fallback shown for a tier-1 pattern
+    // when no qualifying feature is in view.
+    tourHint: string;
 }
 
-// Order shown to user in the intro state.
+// Order shown in the catalogue (the map tour). `locate` entries fly to + mark
+// a live pressure feature; the rest switch the layer and guide the eye.
 export const CATALOG: PatternCatalogEntry[] = [
-    { id: 'cyclonic_inflow',          title: 'Wind curling around a low',                 layerHint: 'Wind layer (surface)' },
-    { id: 'tight_gradient',           title: 'Strong wind in a tight pressure gradient',  layerHint: 'Wind layer (surface)' },
-    { id: 'jet_stream',               title: 'Jet stream',                                layerHint: 'Wind layer at 250h or 300h' },
-    { id: 'low_level_jet',            title: 'Low-level jet (fast nocturnal wind aloft)', layerHint: 'Wind layer at 850h' },
-    { id: 'rain_in_a_line',           title: 'Rain in a line (front / squall)',           layerHint: 'Rain or Radar layer' },
-    { id: 'wintry_mix',               title: 'Wintry mix (rain, snow, or ice near 0°C)',  layerHint: 'Rain, Radar, or Temperature layer' },
-    { id: 'cape_no_storms',           title: 'CAPE without storms (capped instability)',  layerHint: 'CAPE layer' },
-    { id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer' },
-    { id: 'sharp_temperature_line',   title: 'Sharp temperature boundary (front)',               layerHint: 'Temperature layer' },
-    { id: 'heat_dome',                title: 'Heat building under a blocking ridge',             layerHint: 'Temperature or Pressure layer' },
-    { id: 'haze_dust_plume',          title: 'Haze or dust plume',                               layerHint: 'Air Quality or Dust layer' },
-    { id: 'stagnation_inversion',     title: 'Air stagnation under a high (inversion)',          layerHint: 'Air Quality layer' },
-    { id: 'wind_gust_factor',         title: 'High gust factor (gusts >> sustained)',            layerHint: 'Gust layer' },
-    { id: 'orographic_rain',          title: 'Orographic rain & rain shadow',                    layerHint: 'Rain layer (elevated terrain)' },
-    { id: 'swell_vs_wind',            title: 'Swell vs wind waves (distant storm energy)',       layerHint: 'Waves or Swell layer' },
-    { id: 'sea_breeze',               title: 'Sea breeze (afternoon onshore flow)',              layerHint: 'Wind or Gust layer (coastal, afternoon)' },
-    { id: 'fog',                      title: 'Fog (radiation or advection)',                     layerHint: 'Visibility or Fog layer' },
+    {
+        id: 'cyclonic_inflow', title: 'Wind curling around a low', layerHint: 'Wind layer (surface)',
+        overlay: 'wind', level: 'surface', locate: 'low',
+        tourHint: "No clear low is in view — pan to where the wind streamlines curl into a centre, then click there.",
+    },
+    {
+        id: 'tight_gradient', title: 'Strong wind in a tight pressure gradient', layerHint: 'Wind layer (surface)',
+        overlay: 'wind', level: 'surface', locate: 'gradient',
+        tourHint: "No strong high-and-low squeeze is in view — pan between two pressure systems where the isobars pack tight, then click.",
+    },
+    {
+        id: 'jet_stream', title: 'Jet stream', layerHint: 'Wind layer at 250h or 300h',
+        overlay: 'wind', level: '250h',
+        tourHint: "Look for a fast ribbon of wind threading across the map — that's the jet. Click along it.",
+    },
+    {
+        id: 'low_level_jet', title: 'Low-level jet (fast nocturnal wind aloft)', layerHint: 'Wind layer at 850h',
+        overlay: 'wind', level: '850h',
+        tourHint: "Look for a fast low-level core, often strongest overnight, then click the core.",
+    },
+    {
+        id: 'rain_in_a_line', title: 'Rain in a line (front / squall)', layerHint: 'Rain or Radar layer',
+        overlay: 'rain',
+        tourHint: "Look for a sharp coloured band — a front or a squall line — then click it.",
+    },
+    {
+        id: 'wintry_mix', title: 'Wintry mix (rain, snow, or ice near 0°C)', layerHint: 'Rain, Radar, or Temperature layer',
+        overlay: 'temp',
+        tourHint: "Find where temperature sits near 0 °C with precipitation falling, then click that zone.",
+    },
+    {
+        id: 'cape_no_storms', title: 'CAPE without storms (capped instability)', layerHint: 'CAPE layer',
+        overlay: 'cape',
+        tourHint: "Find a warm colour sitting under a quiet, storm-free sky, then click it.",
+    },
+    {
+        id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer',
+        overlay: 'satellite',
+        tourHint: "Find cloud with no matching echo on the Radar layer, then click the cloud.",
+    },
+    {
+        id: 'sharp_temperature_line', title: 'Sharp temperature boundary (front)', layerHint: 'Temperature layer',
+        overlay: 'temp',
+        tourHint: "Find a sharp colour change over a short distance, then click across it.",
+    },
+    {
+        id: 'heat_dome', title: 'Heat building under a blocking ridge', layerHint: 'Temperature or Pressure layer',
+        overlay: 'temp', locate: 'high',
+        tourHint: "No dominant high is in view — pan to a large warm ridge, then click beneath it.",
+    },
+    {
+        id: 'haze_dust_plume', title: 'Haze or dust plume', layerHint: 'Air Quality or Dust layer',
+        overlay: 'dustsm',
+        tourHint: "Find a coloured plume streaming downwind of a source, then click the plume.",
+    },
+    {
+        id: 'stagnation_inversion', title: 'Air stagnation under a high (inversion)', layerHint: 'Air Quality layer',
+        overlay: 'aqi',
+        tourHint: "Find haze built up under calm high pressure, then click it.",
+    },
+    {
+        id: 'wind_gust_factor', title: 'High gust factor (gusts >> sustained)', layerHint: 'Gust layer',
+        overlay: 'gust',
+        tourHint: "Compare with the Wind layer — the gap is widest over rough terrain. Click a gusty spot.",
+    },
+    {
+        id: 'orographic_rain', title: 'Orographic rain & rain shadow', layerHint: 'Rain layer (elevated terrain)',
+        overlay: 'rain',
+        tourHint: "Find rain piled on a mountain's windward side (dry in its lee), then click the wet side.",
+    },
+    {
+        id: 'swell_vs_wind', title: 'Swell vs wind waves (distant storm energy)', layerHint: 'Waves or Swell layer',
+        overlay: 'waves',
+        tourHint: "Find big swell far from any local wind, then click open water.",
+    },
+    {
+        id: 'sea_breeze', title: 'Sea breeze (afternoon onshore flow)', layerHint: 'Wind or Gust layer (coastal, afternoon)',
+        overlay: 'wind', level: 'surface',
+        tourHint: "Find afternoon flow blowing onshore at a coast, then click the shoreline.",
+    },
+    {
+        id: 'fog', title: 'Fog (radiation or advection)', layerHint: 'Visibility or Fog layer',
+        overlay: 'visibility',
+        tourHint: "Find low visibility settled in a valley or along a coast, then click it.",
+    },
 ];
 
 export { MODULES };

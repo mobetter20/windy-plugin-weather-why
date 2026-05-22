@@ -23,7 +23,7 @@ const HIGH_MIN_HPA = 1020;
 // Viewport-scaled grid: span the visible map but keep the point count fixed at
 // 7x7 = 49 (radius:step held at 3:1) so the request stays the proven size at
 // any zoom. Radius clamped so whole-globe zoom can't blow up the request.
-function gridForBounds(map: any): { radiusDeg: number; stepDeg: number } {
+export function gridForBounds(map: any): { radiusDeg: number; stepDeg: number } {
     const b = map.getBounds();
     const latSpan = Math.abs(b.getNorth() - b.getSouth());
     const lonSpan = Math.abs(b.getEast() - b.getWest());

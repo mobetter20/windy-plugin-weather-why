@@ -12,16 +12,55 @@
     <div class="ww-header-rule"></div>
 
     {#if showCatalog}
-        <div class="ww-state ww-state--intro ww-state--catalog">
+        <div class="ww-state ww-state--catalog">
             <button class="ww-back-link" type="button" on:click={toggleCatalog}>← back</button>
-            <div class="ww-intro-hint">
-                <div class="ww-intro-hint-label">Everything Weather Why can explain</div>
-                <ul>
-                    {#each CATALOG as p}
-                        <li><strong>{p.title}</strong> <span class="ww-intro-layer">— {p.layerHint}</span></li>
-                    {/each}
-                </ul>
+            <div class="ww-cat-sublabel">Tap a pattern — the map shows it</div>
+
+            <div class="ww-cat-group">
+                <span class="ww-cat-group-pin">📍</span>
+                <span>Weather Why flies you to a live one</span>
             </div>
+            {#each locatableCatalog as p}
+                <button
+                    class="ww-cat-row ww-cat-row--locatable"
+                    type="button"
+                    on:click={() => runTour(p)}
+                >
+                    <span class="ww-cat-row-body">
+                        <span class="ww-cat-row-title">{p.title}</span>
+                        <span class="ww-cat-row-layer">{tourLayerLabel(p)}</span>
+                    </span>
+                    <span class="ww-cat-pin">📍</span>
+                    <span class="ww-cat-arrow">→</span>
+                </button>
+            {/each}
+
+            <div class="ww-cat-group">
+                <span>These switch the layer — you pan to find one</span>
+            </div>
+            {#each switchCatalog as p}
+                <button class="ww-cat-row" type="button" on:click={() => runTour(p)}>
+                    <span class="ww-cat-row-body">
+                        <span class="ww-cat-row-title">{p.title}</span>
+                        <span class="ww-cat-row-layer">{tourLayerLabel(p)}</span>
+                    </span>
+                    <span class="ww-cat-arrow">→</span>
+                </button>
+            {/each}
+        </div>
+    {:else if tour}
+        <div class="ww-state ww-state--tour">
+            <button class="ww-back-link" type="button" on:click={exitTour}>← all patterns</button>
+            <span
+                class="ww-tour-tier {tour.flew ? 'ww-tour-tier--fly' : 'ww-tour-tier--switch'}"
+            >{tour.flew ? '📍 Flew here' : 'Switched the layer'}</span>
+            <p class="ww-tour-caption">{tour.caption}</p>
+            {#if tour.nudge}
+                <div class="ww-tour-nudge">
+                    <span class="ww-tour-nudge-arrow">↳</span>
+                    <span>{tour.nudge}</span>
+                </div>
+            {/if}
         </div>
     {:else if error}
         <div class="ww-state ww-state--error">
@@ -130,8 +169,9 @@
     import { onDestroy, onMount } from 'svelte';
 
     import config from './pluginConfig';
-    import { fetchFacts } from './lib/facts';
-    import { initViewportMarkers } from './lib/viewport_markers';
+    import { fetchFacts, fetchPressureGrid, findSynopticFeatures } from './lib/facts';
+    import { initViewportMarkers, gridForBounds } from './lib/viewport_markers';
+    import { makeGlyphMarker } from './lib/mapglyph';
     import {
         pickPattern,
         getSupportedLayers,
@@ -139,6 +179,7 @@
         getDefaultedLayers,
         CATALOG,
     } from './lib/patterns';
+    import type { PatternCatalogEntry } from './lib/patterns';
     import type { DetectContext, Facts, LatLon, PatternCard, WindyOverlay } from './lib/types';
 
     const { name, title } = config;
@@ -148,6 +189,12 @@
     // Human-readable labels for every covered layer — derived so the fallback
     // copy below can't go stale when a pattern or layer-default is added.
     const coveredLayerLabels = [...coveredLayers].map(layerLabel).sort();
+
+    // Catalogue split into the two tour tiers (see CATALOG `locate`): the few
+    // patterns that fly to a live pressure feature, vs. the rest that just
+    // switch the layer and guide the eye.
+    const locatableCatalog = CATALOG.filter((p) => p.locate);
+    const switchCatalog = CATALOG.filter((p) => !p.locate);
 
     let isLoading = false;
     let facts: Facts | null = null;
@@ -162,6 +209,13 @@
     let inflight: AbortController | null = null;
 
     let showCatalog = false; // the "what I can explain" catalogue view
+
+    // Map-tour state: when set, the pane shrinks to a one-line caption while the
+    // switched layer (+ optional fly-to marker) does the teaching. `flew` drives
+    // the badge ("Flew here" vs "Switched the layer").
+    let tour: { caption: string; nudge: string; flew: boolean } | null = null;
+    let tourCleanup: (() => void) | null = null;
+    let tourInflight: AbortController | null = null;
 
     // Split the mechanism into a punchy lead sentence + the rest, so the card
     // reads as lead-then-detail instead of one dense block.
@@ -181,6 +235,17 @@
         if (visualCleanup) {
             visualCleanup();
             visualCleanup = null;
+        }
+        // A real click ends any active map tour — clear its caption + marker so
+        // the card (and the pattern's own visual) take over cleanly.
+        tour = null;
+        if (tourCleanup) {
+            tourCleanup();
+            tourCleanup = null;
+        }
+        if (tourInflight) {
+            tourInflight.abort();
+            tourInflight = null;
         }
 
         isLoading = true;
@@ -243,6 +308,169 @@
         store.set('overlay', overlay);
     }
 
+    // ---- Catalogue map tour ----
+    // Clicking a catalogue row switches the map to the pattern's layer; the few
+    // "locatable" pressure patterns additionally fly to + mark a live feature.
+    // The pane shrinks to a one-line caption — the map does the teaching.
+
+    // Thresholds mirror the detectors / viewport markers so the flown-to feature
+    // is the same "real" low/high they use (cyclonic_inflow < 1010; heat_dome's
+    // strong high > 1018; gradient needs a genuine high–low span).
+    const TOUR_LOW_MAX_HPA = 1010;
+    const TOUR_HIGH_MIN_HPA = 1018;
+    const TOUR_GRADIENT_MIN_SPAN_HPA = 8;
+    const FLY_OPTS = { duration: 1.6, easeLinearity: 0.25 };
+
+    function mapReady(): boolean {
+        return (
+            !!map &&
+            typeof (map as any).flyTo === 'function' &&
+            typeof (map as any).getCenter === 'function'
+        );
+    }
+
+    function tourLayerLabel(entry: PatternCatalogEntry): string {
+        const base = layerLabel(entry.overlay);
+        if (entry.level && entry.level !== 'surface') {
+            return `${base} at ${entry.level.replace('h', ' hPa')}`;
+        }
+        return entry.level === 'surface' ? `${base} · surface` : base;
+    }
+
+    async function runTour(entry: PatternCatalogEntry) {
+        showCatalog = false;
+
+        // Switch the layer (and wind level, for the level-gated patterns).
+        store.set('overlay', entry.overlay);
+        if (entry.level) store.set('level', entry.level);
+
+        // Reset any prior tour marker / in-flight grid fetch.
+        if (tourCleanup) {
+            tourCleanup();
+            tourCleanup = null;
+        }
+        if (tourInflight) {
+            tourInflight.abort();
+            tourInflight = null;
+        }
+
+        const label = tourLayerLabel(entry);
+
+        // Tier 2 — switch + guide, no fly.
+        if (!entry.locate || !mapReady()) {
+            tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+            return;
+        }
+
+        // Tier 1 — try to fly to + mark a live pressure feature near the view.
+        tour = { caption: 'Looking for a live one near you…', nudge: '', flew: false };
+        const ac = new AbortController();
+        tourInflight = ac;
+        try {
+            const center = (map as any).getCenter();
+            const { radiusDeg, stepDeg } = gridForBounds(map);
+            const grid = await fetchPressureGrid(center.lat, center.lng, ac.signal, radiusDeg, stepDeg);
+            if (ac.signal.aborted) return;
+            const syn = findSynopticFeatures(grid, center.lat, center.lng);
+            if (!placeTourFeature(entry, syn)) {
+                // Nothing qualifying in view — degrade to the eye-guide fallback.
+                tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+            }
+        } catch (e: any) {
+            if (e?.name === 'AbortError') return;
+            // A tour must never hard-error; fall back to guidance.
+            tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+        } finally {
+            if (tourInflight === ac) tourInflight = null;
+        }
+    }
+
+    function placeTourFeature(entry: PatternCatalogEntry, syn: Facts['synoptic']): boolean {
+        const lo = syn.nearest_low;
+        const hi = syn.nearest_high;
+
+        if (entry.locate === 'low') {
+            if (!Number.isFinite(lo.pressure_hPa) || lo.pressure_hPa > TOUR_LOW_MAX_HPA) return false;
+            if (!Number.isFinite(lo.lat) || !Number.isFinite(lo.lon)) return false;
+            // Clickable marker → reading "why" reuses the normal click flow.
+            const m = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low', () =>
+                runFlow({ lat: lo.lat, lon: lo.lon }),
+            ).addTo(map);
+            tourCleanup = () => m.remove();
+            (map as any).flyTo([lo.lat, lo.lon], 5, FLY_OPTS);
+            tour = {
+                caption: `Flew to a low about ${lo.distance_km.toLocaleString()} km to the ${lo.compass}.`,
+                nudge: 'Click the Low marker to read why.',
+                flew: true,
+            };
+            return true;
+        }
+
+        if (entry.locate === 'high') {
+            if (!Number.isFinite(hi.pressure_hPa) || hi.pressure_hPa < TOUR_HIGH_MIN_HPA) return false;
+            if (!Number.isFinite(hi.lat) || !Number.isFinite(hi.lon)) return false;
+            const m = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high', () =>
+                runFlow({ lat: hi.lat, lon: hi.lon }),
+            ).addTo(map);
+            tourCleanup = () => m.remove();
+            (map as any).flyTo([hi.lat, hi.lon], 5, FLY_OPTS);
+            tour = {
+                caption: `Flew to a high about ${hi.distance_km.toLocaleString()} km to the ${hi.compass}.`,
+                nudge: 'Click the High marker to read why.',
+                flew: true,
+            };
+            return true;
+        }
+
+        // gradient — need a genuine high AND low to frame the squeeze between them.
+        const haveBoth =
+            Number.isFinite(lo.lat) &&
+            Number.isFinite(hi.lat) &&
+            Number.isFinite(lo.pressure_hPa) &&
+            Number.isFinite(hi.pressure_hPa) &&
+            hi.pressure_hPa - lo.pressure_hPa >= TOUR_GRADIENT_MIN_SPAN_HPA;
+        if (!haveBoth) return false;
+        // Passive markers — the gradient lives BETWEEN them, so the nudge sends
+        // the click into the gap (clicking a centre would tell the L/H story).
+        const mLo = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low').addTo(map);
+        const mHi = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high').addTo(map);
+        tourCleanup = () => {
+            mLo.remove();
+            mHi.remove();
+        };
+        if (typeof (map as any).flyToBounds === 'function') {
+            (map as any).flyToBounds(
+                [
+                    [lo.lat, lo.lon],
+                    [hi.lat, hi.lon],
+                ],
+                { ...FLY_OPTS, maxZoom: 5, padding: [40, 40] },
+            );
+        } else {
+            (map as any).flyTo([(lo.lat + hi.lat) / 2, (lo.lon + hi.lon) / 2], 4, FLY_OPTS);
+        }
+        tour = {
+            caption:
+                'Framed the squeeze between the nearest high and low — wind accelerates through the packed isobars between them.',
+            nudge: 'Click into the gap between them to read why.',
+            flew: true,
+        };
+        return true;
+    }
+
+    function exitTour() {
+        if (tourInflight) {
+            tourInflight.abort();
+            tourInflight = null;
+        }
+        if (tourCleanup) {
+            tourCleanup();
+            tourCleanup = null;
+        }
+        tour = null;
+        showCatalog = true; // back to the catalogue; leave the map where it is
+    }
+
     function toggleCatalog() {
         showCatalog = !showCatalog;
     }
@@ -302,6 +530,14 @@
         if (viewportCleanup) {
             viewportCleanup();
             viewportCleanup = null;
+        }
+        if (tourCleanup) {
+            tourCleanup();
+            tourCleanup = null;
+        }
+        if (tourInflight) {
+            tourInflight.abort();
+            tourInflight = null;
         }
         singleclick.off(name, runFlow);
     });
@@ -472,49 +708,128 @@
         opacity: 0.65;
     }
 
-    // ---------- Intro: instruction + patterns hint box ----------
+    // ---------- Catalogue: clickable map-tour rows ----------
 
-    .ww-intro-instruction {
-        margin: 0 0 1em;
-        font-size: 0.95em;
-        opacity: 0.6;
-
-        em { font-style: italic; }
+    .ww-cat-sublabel {
+        font-size: 0.7em;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 600;
+        opacity: 0.55;
+        margin: 0 0 1.1em;
     }
 
-    .ww-state--intro .ww-intro-hint {
-        margin-top: 0.85em;
-        padding: 0.85em 1em;
+    .ww-cat-group {
+        display: flex;
+        align-items: baseline;
+        gap: 0.4em;
+        margin: 1.15em 0 0.6em;
+        font-size: 0.82em;
+        line-height: 1.4;
+        opacity: 0.78;
+
+        &:first-of-type { margin-top: 0; }
+
+        .ww-cat-group-pin { font-size: 1.05em; }
+    }
+
+    .ww-cat-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        width: 100%;
+        margin: 0 0 0.4em;
+        padding: 0.62em 0.7em 0.62em 0.85em;
         background: rgba(127, 127, 127, 0.1);
         border: 1px solid rgba(127, 127, 127, 0.18);
         border-radius: 0.55em;
-        font-size: 0.9em;
-        line-height: 1.55;
+        font-family: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, transform 0.05s;
 
-        .ww-intro-hint-label {
-            font-size: 0.78em;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            opacity: 0.6;
-            margin-bottom: 0.55em;
-            font-weight: 600;
+        &:hover {
+            background: rgba(127, 127, 127, 0.18);
+            border-color: rgba(127, 127, 127, 0.34);
         }
 
-        ul {
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
+        &:active { transform: translateY(0.5px); }
 
-        li {
-            margin: 0 0 0.35em;
-            line-height: 1.5;
-        }
+        .ww-cat-row-body { flex: 1; min-width: 0; }
 
-        .ww-intro-layer {
-            opacity: 0.65;
+        .ww-cat-row-title {
+            display: block;
             font-size: 0.92em;
+            font-weight: 600;
+            line-height: 1.3;
         }
+
+        .ww-cat-row-layer {
+            display: block;
+            margin-top: 0.2em;
+            font-size: 0.72em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            opacity: 0.55;
+        }
+
+        .ww-cat-pin { flex-shrink: 0; font-size: 0.95em; }
+
+        .ww-cat-arrow { flex-shrink: 0; font-weight: 700; opacity: 0.45; }
+    }
+
+    // The locatable few get the single accent — a quiet hint that these behave
+    // differently (they fly to a live feature), without shouting.
+    .ww-cat-row--locatable {
+        border-color: fade(@accent, 38%);
+        background: fade(@accent, 8%);
+
+        &:hover {
+            border-color: fade(@accent, 55%);
+            background: fade(@accent, 14%);
+        }
+    }
+
+    // ---------- Map-tour caption (the shrunk pane) ----------
+
+    .ww-state--tour { animation: ww-fade-in 0.3s ease-out; }
+
+    .ww-tour-tier {
+        display: inline-block;
+        margin-bottom: 0.85em;
+        padding: 0.2em 0.62em;
+        border-radius: 0.4em;
+        font-size: 0.64em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        border: 1px solid rgba(127, 127, 127, 0.3);
+    }
+
+    .ww-tour-tier--fly {
+        color: @accent;
+        border-color: fade(@accent, 45%);
+        background: fade(@accent, 12%);
+    }
+
+    .ww-tour-tier--switch { opacity: 0.5; }
+
+    .ww-tour-caption {
+        margin: 0 0 0.9em;
+        font-size: 1.08em;
+        line-height: 1.55;
+        font-weight: 500;
+    }
+
+    .ww-tour-nudge {
+        display: flex;
+        gap: 0.5em;
+        font-size: 0.92em;
+        line-height: 1.5;
+        opacity: 0.72;
+
+        .ww-tour-nudge-arrow { opacity: 0.6; }
     }
 
     // ---------- Loading / error / fallback subtleties ----------
@@ -590,17 +905,6 @@
         letter-spacing: 0.08em;
     }
 
-    .ww-schematic {
-        margin: 0 0 1.25em;
-
-        :global(svg) {
-            display: block;
-            width: 96px;
-            height: auto;
-            opacity: 0.78;
-        }
-    }
-
     .ww-section-hint {
         text-transform: none;
         letter-spacing: 0;
@@ -612,56 +916,6 @@
     .ww-card-remember {
         border-top: 1px solid rgba(127, 127, 127, 0.18);
         padding-top: 1.05em;
-    }
-
-    .ww-coachmark {
-        position: relative;
-        margin: 0 0 1.15em;
-        padding: 0.8em 2.1em 0.8em 0.95em;
-        background: rgba(127, 127, 127, 0.1);
-        border: 1px solid rgba(127, 127, 127, 0.2);
-        border-radius: 0.55em;
-        font-size: 0.86em;
-        line-height: 1.5;
-
-        p { margin: 0; opacity: 0.85; }
-    }
-
-    .ww-coachmark-dismiss {
-        position: absolute;
-        top: 0.35em;
-        right: 0.5em;
-        padding: 0.15em 0.4em;
-        background: none;
-        border: 0;
-        color: inherit;
-        font-family: inherit;
-        font-size: 1.15em;
-        line-height: 1;
-        cursor: pointer;
-        opacity: 0.5;
-
-        &:hover { opacity: 0.9; }
-    }
-
-    .ww-catalog-toggle {
-        flex-shrink: 0;               // never let it squeeze or wrap the wordmark
-        margin-left: auto;            // sit at the right edge of the header flex row
-        padding: 0.3em 0.7em;
-        background: rgba(127, 127, 127, 0.14);
-        border: 1px solid rgba(127, 127, 127, 0.3);
-        border-radius: 0.45em;
-        color: inherit;
-        font-family: inherit;
-        font-size: 11px;              // FIXED, not em — the title's base font is large
-        font-weight: 600;
-        letter-spacing: 0.02em;
-        white-space: nowrap;
-        cursor: pointer;
-        opacity: 0.85;
-        transition: background 0.15s, opacity 0.15s;
-
-        &:hover { opacity: 1; background: rgba(127, 127, 127, 0.24); }
     }
 
     .ww-back-link {
@@ -678,17 +932,7 @@
         &:hover { opacity: 0.95; }
     }
 
-    // ---------- Intro redesign: hero + value-prop + CTA ----------
-
-    .ww-intro-hero {
-        margin: 0.4em 0 1.2em;
-
-        :global(svg) {
-            width: 116px;
-            height: auto;
-            opacity: 0.45;
-        }
-    }
+    // ---------- Intro: value-prop + CTA ----------
 
     .ww-intro-lede {
         margin: 0 0 0.75em;
