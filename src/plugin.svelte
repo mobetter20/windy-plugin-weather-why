@@ -97,7 +97,10 @@
 
             <p class="ww-card-lead">{mechLead}</p>
             {#if mechDetail}
-                <p class="ww-card-mechanism">{mechDetail}</p>
+                <details class="ww-mech-detail">
+                    <summary class="ww-mech-detail-summary">How it works</summary>
+                    <p class="ww-card-mechanism">{mechDetail}</p>
+                </details>
             {/if}
 
             <div class="ww-card-section">
@@ -392,33 +395,35 @@
         if (entry.locate === 'low') {
             if (!Number.isFinite(lo.pressure_hPa) || lo.pressure_hPa > TOUR_LOW_MAX_HPA) return false;
             if (!Number.isFinite(lo.lat) || !Number.isFinite(lo.lon)) return false;
-            // Clickable marker → reading "why" reuses the normal click flow.
-            const m = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low', () =>
-                runFlow({ lat: lo.lat, lon: lo.lon }),
-            ).addTo(map);
-            tourCleanup = () => m.remove();
+            const loc = { lat: lo.lat, lon: lo.lon };
+            const m = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low', undefined, true).addTo(map);
+            let tid: ReturnType<typeof setTimeout> | null = null;
+            tourCleanup = () => { m.remove(); if (tid) clearTimeout(tid); };
             (map as any).flyTo([lo.lat, lo.lon], 5, FLY_OPTS);
             tour = {
-                caption: `Flew to a low about ${lo.distance_km.toLocaleString()} km to the ${lo.compass}.`,
-                nudge: 'Click the Low marker to read why.',
+                caption: `Flew to a low about ${lo.distance_km.toLocaleString()} km to the ${lo.compass}. Loading why…`,
+                nudge: '',
                 flew: true,
             };
+            // Auto-explain: start the card flow after the fly animation completes.
+            tid = setTimeout(() => void runFlow(loc), 1700);
             return true;
         }
 
         if (entry.locate === 'high') {
             if (!Number.isFinite(hi.pressure_hPa) || hi.pressure_hPa < TOUR_HIGH_MIN_HPA) return false;
             if (!Number.isFinite(hi.lat) || !Number.isFinite(hi.lon)) return false;
-            const m = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high', () =>
-                runFlow({ lat: hi.lat, lon: hi.lon }),
-            ).addTo(map);
-            tourCleanup = () => m.remove();
+            const loc = { lat: hi.lat, lon: hi.lon };
+            const m = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high', undefined, true).addTo(map);
+            let tid: ReturnType<typeof setTimeout> | null = null;
+            tourCleanup = () => { m.remove(); if (tid) clearTimeout(tid); };
             (map as any).flyTo([hi.lat, hi.lon], 5, FLY_OPTS);
             tour = {
-                caption: `Flew to a high about ${hi.distance_km.toLocaleString()} km to the ${hi.compass}.`,
-                nudge: 'Click the High marker to read why.',
+                caption: `Flew to a high about ${hi.distance_km.toLocaleString()} km to the ${hi.compass}. Loading why…`,
+                nudge: '',
                 flew: true,
             };
+            tid = setTimeout(() => void runFlow(loc), 1700);
             return true;
         }
 
@@ -432,8 +437,8 @@
         if (!haveBoth) return false;
         // Passive markers — the gradient lives BETWEEN them, so the nudge sends
         // the click into the gap (clicking a centre would tell the L/H story).
-        const mLo = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low').addTo(map);
-        const mHi = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high').addTo(map);
+        const mLo = makeGlyphMarker(lo.lat, lo.lon, 'Low', 'low', undefined, true).addTo(map);
+        const mHi = makeGlyphMarker(hi.lat, hi.lon, 'High', 'high', undefined, true).addTo(map);
         tourCleanup = () => {
             mLo.remove();
             mHi.remove();
@@ -1029,5 +1034,42 @@
         outline: 2px solid currentColor;
         outline-offset: 2px;
         opacity: 1;
+    }
+
+    // Tour-placed markers — accent colour so they read against any layer.
+    :global(.ww-map-glyph--tour) {
+        color: @accent;
+        border-color: fade(@accent, 65%);
+        background: fade(@accent, 18%);
+        opacity: 1;
+    }
+
+    // ---------- "How it works" disclosure (build #2: lead-first card) ----------
+
+    .ww-mech-detail {
+        margin: 0 0 1.4em;
+
+        .ww-mech-detail-summary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35em;
+            padding: 0.22em 0;
+            font-size: 0.78em;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            opacity: 0.5;
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+
+            &::-webkit-details-marker { display: none; }
+
+            &::before { content: '▸'; font-size: 0.85em; }
+        }
+
+        &[open] .ww-mech-detail-summary { opacity: 0.65; }
+        &[open] .ww-mech-detail-summary::before { content: '▾'; }
+
+        .ww-card-mechanism { margin-top: 0.55em; }
     }
 </style>

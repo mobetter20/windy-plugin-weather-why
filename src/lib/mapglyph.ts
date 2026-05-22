@@ -23,23 +23,27 @@ export function makeGlyphMarker(
     label: string,
     kind: GlyphKind,
     onClick?: () => void,
+    tourStyle?: boolean,
 ): any {
     const interactive = typeof onClick === 'function';
     const cls =
-        `ww-map-glyph ww-map-glyph--${kind}` + (interactive ? ' ww-map-glyph--clickable' : '');
+        `ww-map-glyph ww-map-glyph--${kind}` +
+        (interactive ? ' ww-map-glyph--clickable' : '') +
+        (tourStyle ? ' ww-map-glyph--tour' : '');
     // a11y: a clickable marker is a keyboard-focusable button (activation wired
     // below); a passive marker is just a labelled image.
     const a11y = interactive
         ? ` role="button" tabindex="0" aria-label="${label} pressure centre — open its explanation"`
         : ` role="img" aria-label="${label} pressure centre"`;
+    const [w, h] = tourStyle ? [56, 22] : [44, 18];
     const marker = new L.Marker(
         { lat, lng: lon },
         {
             icon: new L.DivIcon({
                 className: 'ww-map-glyph-icon',
                 html: `<div class="${cls}"${a11y}>${label}</div>`,
-                iconSize: [44, 18],
-                iconAnchor: [22, 9],
+                iconSize: [w, h],
+                iconAnchor: [w / 2, h / 2],
             }),
             interactive,
         },
