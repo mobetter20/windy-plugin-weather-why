@@ -346,8 +346,21 @@
 
         const label = tourLayerLabel(entry);
 
-        // Tier 2 — switch + guide, no fly.
-        if (!entry.locate || !mapReady()) {
+        // Tier 2 — switch the layer then auto-explain at the viewport centre.
+        // No hunt-and-click: the user gets an immediate reading.
+        if (!entry.locate) {
+            if (mapReady()) {
+                const center = (map as any).getCenter();
+                void runFlow({ lat: center.lat, lon: center.lng });
+            } else {
+                // Map API unavailable — fall back to eye-guide hint.
+                tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+            }
+            return;
+        }
+
+        // Tier 1 — flyTo; degrade to hint if map API unavailable.
+        if (!mapReady()) {
             tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
             return;
         }
