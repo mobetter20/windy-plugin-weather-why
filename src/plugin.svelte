@@ -50,15 +50,21 @@
     {:else if tour}
         <div class="ww-state ww-state--tour">
             <button class="ww-back-link" type="button" on:click={exitTour}>← all patterns</button>
-            <span
-                class="ww-tour-tier {tour.flew ? 'ww-tour-tier--fly' : 'ww-tour-tier--switch'}"
-            >{tour.flew ? '📍 Flew here' : 'Switched the layer'}</span>
-            <p class="ww-tour-caption">{tour.caption}</p>
-            {#if tour.nudge}
-                <div class="ww-tour-nudge">
-                    <span class="ww-tour-nudge-arrow">↳</span>
-                    <span>{tour.nudge}</span>
-                </div>
+            {#if tour.patternTitle}
+                <!-- Tier-2: pattern-intro card — title + what to look for -->
+                <h2 class="ww-tour-title">{tour.patternTitle}</h2>
+                <p class="ww-tour-caption">{stripClickHint(tour.caption)}</p>
+                <p class="ww-tour-cta">Tap the map where you see it for a live reading.</p>
+            {:else}
+                <!-- Tier-1: flew to a live feature -->
+                <span class="ww-tour-tier ww-tour-tier--fly">📍 Flew here</span>
+                <p class="ww-tour-caption">{tour.caption}</p>
+                {#if tour.nudge}
+                    <div class="ww-tour-nudge">
+                        <span class="ww-tour-nudge-arrow">↳</span>
+                        <span>{tour.nudge}</span>
+                    </div>
+                {/if}
             {/if}
         </div>
     {:else if error}
@@ -199,10 +205,9 @@
 
     let showCatalog = true; // catalogue is the home screen
 
-    // Map-tour state: when set, the pane shrinks to a one-line caption while the
-    // switched layer (+ optional fly-to marker) does the teaching. `flew` drives
-    // the badge ("Flew here" vs "Switched the layer").
-    let tour: { caption: string; nudge: string; flew: boolean } | null = null;
+    // Map-tour state. `flew` = tier-1 (flew to a feature). `patternTitle` set for
+    // tier-2 entries: pane shows a pattern-intro card instead of a generic hint.
+    let tour: { caption: string; nudge: string; flew: boolean; patternTitle?: string } | null = null;
     let tourCleanup: (() => void) | null = null;
     let tourInflight: AbortController | null = null;
 
@@ -346,16 +351,10 @@
 
         const label = tourLayerLabel(entry);
 
-        // Tier 2 — switch the layer then auto-explain at the viewport centre.
-        // No hunt-and-click: the user gets an immediate reading.
+        // Tier 2 — switch the layer and show a pattern-intro card so the user
+        // knows what to look for. Tap the map anywhere to get a live reading.
         if (!entry.locate) {
-            if (mapReady()) {
-                const center = (map as any).getCenter();
-                void runFlow({ lat: center.lat, lon: center.lng });
-            } else {
-                // Map API unavailable — fall back to eye-guide hint.
-                tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
-            }
+            tour = { caption: entry.tourHint, nudge: '', flew: false, patternTitle: entry.title };
             return;
         }
 
@@ -484,6 +483,12 @@
         error = null;
         isLoading = false;
         showCatalog = true;
+    }
+
+    // Remove trailing "then click X" instructions from tourHints — clicking is
+    // implicit when the map is active; no need to direct the user explicitly.
+    function stripClickHint(s: string): string {
+        return s.replace(/[,.]?\s*(then click\b[^.]*|click\b[^.]*)\.$/, '.').trimEnd();
     }
 
     function fmtCoords(loc: LatLon): string {
@@ -824,13 +829,28 @@
         background: fade(@accent, 12%);
     }
 
-    .ww-tour-tier--switch { opacity: 0.5; }
+    // Tier-2 intro: pattern name as the headline
+    .ww-tour-title {
+        margin: 0 0 0.75em;
+        font-size: 1.3em;
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+    }
 
     .ww-tour-caption {
         margin: 0 0 0.9em;
         font-size: 1.08em;
         line-height: 1.55;
         font-weight: 500;
+    }
+
+    .ww-tour-cta {
+        margin: 0.6em 0 0;
+        font-size: 0.85em;
+        line-height: 1.5;
+        opacity: 0.55;
+        font-style: italic;
     }
 
     .ww-tour-nudge {
