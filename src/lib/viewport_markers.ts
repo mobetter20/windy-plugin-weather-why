@@ -9,6 +9,8 @@
 // rain lines etc. are single-point-proxy by design and have no map location —
 // so this is lows/highs only, deliberately.
 
+import store from '@windy/store';
+
 import { fetchPressureGrid, findSynopticFeatures } from './facts';
 import { makeGlyphMarker } from './mapglyph';
 import type { LatLon, PressureFeature } from './types';
@@ -19,6 +21,19 @@ const DEBOUNCE_MS = 500;
 // would mislead. The low threshold mirrors cyclonic_inflow's "is really a low".
 const LOW_MAX_HPA = 1010;
 const HIGH_MIN_HPA = 1020;
+
+// Pressure highs/lows are only the story on the wind and pressure layers. On any
+// other overlay (visibility, temp, rain…) an L/H chip is off-topic noise, so the
+// proactive markers are hidden there.
+const MARKER_LAYERS = new Set<string>(['wind', 'pressure']);
+
+function layerWantsMarkers(): boolean {
+    try {
+        return MARKER_LAYERS.has(store.get('overlay') as string);
+    } catch {
+        return false;
+    }
+}
 
 // Viewport-scaled grid: span the visible map but keep the point count fixed at
 // 7x7 = 49 (radius:step held at 3:1) so the request stays the proven size at
@@ -39,6 +54,7 @@ export function initViewportMarkers(
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     let inflight: AbortController | null = null;
     let destroyed = false;
+    let overlaySub: number | null = null;
 
     function clearMarkers() {
         for (const m of markers) {
@@ -56,6 +72,11 @@ export function initViewportMarkers(
         if (inflight) {
             inflight.abort();
             inflight = null;
+        }
+        // Off-topic layer — clear any existing chips and skip the fetch entirely.
+        if (!layerWantsMarkers()) {
+            clearMarkers();
+            return;
         }
         const ac = new AbortController();
         inflight = ac;
@@ -123,6 +144,13 @@ export function initViewportMarkers(
         // Map event API unavailable — skip proactive markers entirely.
         return () => {};
     }
+    try {
+        // React to layer flips (via the plugin or Windy's own UI): clear the chips
+        // when leaving a pressure layer, restore them on return.
+        overlaySub = store.on('overlay', () => void refresh());
+    } catch {
+        /* store event API unavailable — markers just won't react to layer flips */
+    }
     void refresh(); // initial fetch on plugin open
 
     return () => {
@@ -139,6 +167,14 @@ export function initViewportMarkers(
             map.off('moveend', onMoveEnd);
         } catch {
             /* already torn down */
+        }
+        if (overlaySub != null) {
+            try {
+                store.off(overlaySub);
+            } catch {
+                /* already torn down */
+            }
+            overlaySub = null;
         }
         clearMarkers();
     };

@@ -340,10 +340,9 @@ const visibility_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `The visibility layer shows how far you could see at the surface. It drops when ` +
-            `something fills the air: fog and mist (water droplets), haze and dust (particles), ` +
-            `or heavy rain and snow. ${visPhrase} The sharpest gradients usually trace the edge ` +
-            `of a fog bank or a front.`,
+            `${visPhrase} The visibility layer shows how far you could see at the surface — it drops ` +
+            `when something fills the air: fog and mist (water droplets), haze and dust (particles), ` +
+            `or heavy rain and snow. The sharpest gradients usually trace the edge of a fog bank or a front.`,
         checkNext: [
             {
                 label: 'Toggle Air Quality: haze-driven visibility loss shows up as elevated particulates',
