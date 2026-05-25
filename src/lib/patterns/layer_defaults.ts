@@ -299,10 +299,10 @@ const clouds_default: DefaultFn = (f, ctx) => {
     return {
         title: "What you're seeing",
         mechanism: isCloudtop
-            ? `${cloudPhrase} The cloud-top layer shows how high — and how cold — the tops of clouds ` +
-              `reach. High, cold tops mean deep convection: cumulonimbus towering toward the tropopause; ` +
+            ? `The cloud-top layer shows how high — and how cold — the tops of clouds reach. ` +
+              `High, cold tops mean deep convection: cumulonimbus towering toward the tropopause; ` +
               `low, warm tops are shallow stratus or fog. It's the height of the top, not the amount ` +
-              `of cover, that signals how strong the system is.`
+              `of cover, that signals how strong the system is. ${cloudPhrase}`
             : `${cloudPhrase} The cloud layer shows how much of the sky is filled with cloud. Clouds ` +
               `form where air rises and cools to its dew point, and clear where air sinks and warms. ` +
               `Cover alone doesn't tell you about rain — thick cloud can be dry, thin cloud can drizzle.`,
@@ -353,9 +353,9 @@ const visibility_default: DefaultFn = (f, _ctx) => {
         } else if (km >= 10) {
             lead = `Visibility here is about ${Math.round(km)} km — good, with a little haze or moisture.`;
             why =
-                `A small amount of suspended water vapour or fine particles is softening the horizon, ` +
-                `but not enough to obscure it. This is the everyday state of a moist or lightly hazy ` +
-                `air mass — light scatters off what's in the air, just not much of it yet.`;
+                `A small amount of suspended moisture and fine particles is softening the horizon, ` +
+                `but not enough to obscure it. This is the everyday state of a slightly humid or hazy ` +
+                `air mass — light scatters off what's suspended in the air, just not much of it yet.`;
         } else if (precip != null && precip > 0.1) {
             lead = `Visibility here is about ${km.toFixed(1)} km — cut down by precipitation.`;
             why =
@@ -379,7 +379,7 @@ const visibility_default: DefaultFn = (f, _ctx) => {
         } else {
             lead = `Visibility here is about ${km.toFixed(1)} km — moderately reduced.`;
             why =
-                `A mix of humidity and fine particles is scattering light, with no single dominant ` +
+                `A mix of moisture and fine particles is scattering light, with no single dominant ` +
                 `cause: not wet enough for mist, not dirty enough for clear haze. Reduced visibility ` +
                 `like this is typical of a settled, slightly stagnant air mass.`;
         }
