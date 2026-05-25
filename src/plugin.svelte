@@ -13,7 +13,11 @@
 
     {#if showCatalog}
         <div class="ww-state ww-state--catalog">
-            <div class="ww-cat-sublabel">Tap a pattern · the map explains it</div>
+            <p class="ww-cat-lede">
+                Click anywhere on the map to find out <em>why</em> the weather there is doing
+                what it's doing.
+            </p>
+            <div class="ww-cat-sublabel">— or tap a pattern below and the map shows it</div>
 
             <div class="ww-cat-group">
                 <span class="ww-cat-group-pin">📍</span>
@@ -51,9 +55,12 @@
         <div class="ww-state ww-state--tour">
             <button class="ww-back-link" type="button" on:click={exitTour}>← all patterns</button>
             {#if tour.patternTitle}
-                <!-- Tier-2: pattern-intro card — title + what to look for -->
+                <!-- Tier-2: pattern-intro card — title + why + what to look for -->
                 <h2 class="ww-tour-title">{tour.patternTitle}</h2>
-                <p class="ww-tour-caption">{stripClickHint(tour.caption)}</p>
+                {#if tour.gist}
+                    <p class="ww-tour-gist">{tour.gist}</p>
+                {/if}
+                <p class="ww-tour-look">{stripClickHint(tour.caption)}</p>
                 <p class="ww-tour-cta">Tap the map where you see it for a live reading.</p>
             {:else}
                 <!-- Tier-1: flew to a live feature -->
@@ -206,7 +213,13 @@
 
     // Map-tour state. `flew` = tier-1 (flew to a feature). `patternTitle` set for
     // tier-2 entries: pane shows a pattern-intro card instead of a generic hint.
-    let tour: { caption: string; nudge: string; flew: boolean; patternTitle?: string } | null = null;
+    let tour: {
+        caption: string;
+        nudge: string;
+        flew: boolean;
+        patternTitle?: string;
+        gist?: string;
+    } | null = null;
     let tourCleanup: (() => void) | null = null;
     let tourInflight: AbortController | null = null;
 
@@ -353,7 +366,13 @@
         // Tier 2 — switch the layer and show a pattern-intro card so the user
         // knows what to look for. Tap the map anywhere to get a live reading.
         if (!entry.locate) {
-            tour = { caption: entry.tourHint, nudge: '', flew: false, patternTitle: entry.title };
+            tour = {
+                caption: entry.tourHint,
+                nudge: '',
+                flew: false,
+                patternTitle: entry.title,
+                gist: entry.gist,
+            };
             return;
         }
 
@@ -725,6 +744,16 @@
 
     // ---------- Catalogue: clickable map-tour rows ----------
 
+    .ww-cat-lede {
+        margin: 0 0 0.5em;
+        font-size: 1.04em;
+        line-height: 1.5;
+        font-weight: 500;
+        opacity: 0.95;
+
+        em { font-style: italic; }
+    }
+
     .ww-cat-sublabel {
         font-size: 0.7em;
         text-transform: uppercase;
@@ -830,11 +859,27 @@
 
     // Tier-2 intro: pattern name as the headline
     .ww-tour-title {
-        margin: 0 0 0.75em;
+        margin: 0 0 0.6em;
         font-size: 1.3em;
         font-weight: 600;
         line-height: 1.3;
         letter-spacing: -0.01em;
+    }
+
+    // The why — the explanation that makes the catalogue browse teach, not just point.
+    .ww-tour-gist {
+        margin: 0 0 0.85em;
+        font-size: 1.05em;
+        line-height: 1.6;
+        font-weight: 500;
+    }
+
+    // Secondary: where to look for it on the map (lighter than the why above).
+    .ww-tour-look {
+        margin: 0 0 0.2em;
+        font-size: 0.92em;
+        line-height: 1.55;
+        opacity: 0.7;
     }
 
     .ww-tour-caption {

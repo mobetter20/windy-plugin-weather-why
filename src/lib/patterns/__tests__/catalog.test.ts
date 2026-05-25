@@ -50,4 +50,11 @@ describe('CATALOG (map-tour data)', () => {
         const empty = CATALOG.filter((c) => !c.tourHint || c.tourHint.trim().length === 0).map((c) => c.id);
         expect(empty).toEqual([]);
     });
+
+    // The gist is the "why" shown on the catalogue card — without it the browse
+    // would just point ("go find it") instead of teaching, betraying the premise.
+    it('every entry has a non-empty mechanism gist', () => {
+        const empty = CATALOG.filter((c) => !c.gist || c.gist.trim().length === 0).map((c) => c.id);
+        expect(empty).toEqual([]);
+    });
 });
