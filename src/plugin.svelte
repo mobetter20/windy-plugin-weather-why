@@ -947,7 +947,8 @@
     }
 
     .ww-back-link {
-        display: inline-flex;
+        display: flex;
+        width: fit-content;        // shrink to content, but own its own line (clear of the badge)
         align-items: center;
         margin: 0 0 1em;
         padding: 0.38em 0.75em;
