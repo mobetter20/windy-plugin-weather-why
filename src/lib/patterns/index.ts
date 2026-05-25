@@ -123,7 +123,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     {
         id: 'jet_stream', title: 'Jet stream', layerHint: 'Wind layer at 250h or 300h',
         overlay: 'wind', level: '250h',
-        gist: "A fast river of wind high in the atmosphere, driven by the sharp temperature contrast between cold polar and warm subtropical air.",
+        gist: "A fast river of wind high in the atmosphere, driven by the sharp temperature contrast between cold polar and warmer mid-latitude air.",
         tourHint: "Look for a fast ribbon of wind threading across the map — that's the jet. Click along it.",
     },
     {
@@ -153,7 +153,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     {
         id: 'radar_satellite_mismatch', title: 'Clouds without rain (virga, cirrus, cloud shield)', layerHint: 'Radar, Satellite, or Cloud layer',
         overlay: 'satellite',
-        gist: "Cloud can sit on satellite with nothing on radar — high cirrus, a thin shield, or virga that evaporates before it reaches the ground.",
+        gist: "Cloud can sit on satellite with nothing on radar — high cirrus too thin or cold to precipitate, or virga that evaporates before it reaches the ground.",
         tourHint: "Find cloud with no matching echo on the Radar layer, then click the cloud.",
     },
     {
@@ -183,7 +183,7 @@ export const CATALOG: PatternCatalogEntry[] = [
     {
         id: 'wind_gust_factor', title: 'High gust factor (gusts >> sustained)', layerHint: 'Gust layer',
         overlay: 'gust',
-        gist: "Gusts outrun the steady wind when turbulence over rough ground drags pockets of faster air down to the surface.",
+        gist: "Gusts outrun the steady wind when turbulence — from rough ground, eddies, and convective mixing — brings pockets of faster air aloft down to the surface.",
         tourHint: "Compare with the Wind layer — the gap is widest over rough terrain. Click a gusty spot.",
     },
     {

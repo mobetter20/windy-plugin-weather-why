@@ -113,10 +113,11 @@ const temp_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `${tempPhrase} The colors smoothly grade from cold to warm, but real-world ` +
-            `boundaries — fronts, coasts, mountains — produce sharper transitions. Near coasts ` +
-            `the contrast between land and sea drives sea breezes; over mountains, temperature ` +
-            `drops with altitude (~6°C per kilometre).`,
+            `${tempPhrase} With no sharp front cutting across right here, that's essentially the ` +
+            `ambient air-mass temperature — set by latitude, season, and time of day. The colors ` +
+            `smoothly grade from cold to warm, but real-world boundaries — fronts, coasts, mountains ` +
+            `— produce sharper transitions. Near coasts the contrast between land and sea drives sea ` +
+            `breezes; over mountains, temperature drops with altitude (~6°C per kilometre).`,
         checkNext: [
             {
                 label: 'Toggle Wind: a real front comes with both a temperature change AND a wind shift',
@@ -145,7 +146,8 @@ const satellite_default: DefaultFn = (f, _ctx) => {
         mechanism:
             `${cloudPhrase} The satellite layer shows actual cloud structure as observed from space ` +
             `— not a forecast. Brighter, whiter areas are thicker or higher clouds; darker patches ` +
-            `show fewer clouds or clearer sky.`,
+            `show fewer clouds or clearer sky. Cloud marks where air is rising and cooling to its dew ` +
+            `point; the clear gaps are where it's sinking and warming.`,
         checkNext: [
             {
                 label: 'Toggle Radar: compare with currently observed rain — clouds without rain are common',
