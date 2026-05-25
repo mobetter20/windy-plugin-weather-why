@@ -28,10 +28,10 @@ const wind_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `Wind is air moving from higher pressure toward lower pressure; the arrows show ` +
-            `direction and the colors show speed. ${speedPhrase} The pattern around you isn't ` +
-            `dominated by a single low-pressure swirl or a sharp pressure squeeze right now — ` +
-            `typical of fair-weather flow.`,
+            `${speedPhrase} Wind is air moving from higher pressure toward lower pressure — the ` +
+            `arrows show direction, the colors show speed. The pattern around you isn't dominated ` +
+            `by a single low-pressure swirl or a sharp pressure squeeze right now, which is typical ` +
+            `of fair-weather flow.`,
         checkNext: [
             {
                 label: 'Toggle Pressure: see the pressure pattern that sets this wind',
@@ -143,9 +143,9 @@ const satellite_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `The satellite layer shows actual cloud structure as observed from space — not a ` +
-            `forecast. Brighter, whiter areas are thicker or higher clouds; darker patches show ` +
-            `fewer clouds or clearer sky. ${cloudPhrase}`,
+            `${cloudPhrase} The satellite layer shows actual cloud structure as observed from space ` +
+            `— not a forecast. Brighter, whiter areas are thicker or higher clouds; darker patches ` +
+            `show fewer clouds or clearer sky.`,
         checkNext: [
             {
                 label: 'Toggle Radar: compare with currently observed rain — clouds without rain are common',
@@ -210,9 +210,10 @@ const waves_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `This layer shows significant wave height — the average of the highest third of waves at each point. ` +
-            `It combines local wind chop with swell arriving from distant storms, sometimes thousands of kilometres away. ` +
-            localPhrase,
+            localPhrase +
+            ` This layer shows significant wave height — the average of the highest third of waves at ` +
+            `each point, combining local wind chop with swell arriving from distant storms, sometimes ` +
+            `thousands of kilometres away.`,
         checkNext: [
             {
                 label: 'Toggle Wind: the wave pattern follows the wind trajectory nearby and upwind',
@@ -268,10 +269,10 @@ const radar_default: DefaultFn = (f, _ctx) => {
     return {
         title: "What you're seeing",
         mechanism:
-            `Radar shows precipitation that is actually falling right now — energy bounced ` +
-            `back from raindrops, snow, and hail. Unlike the Rain layer, which is model ` +
-            `forecast, this is an observation. ${obsPhrase} Brighter colors mean heavier ` +
-            `precipitation; a band that moves between frames is usually a front or a line of showers.`,
+            `${obsPhrase} Radar shows precipitation that is actually falling right now — energy ` +
+            `bounced back from raindrops, snow, and hail; unlike the Rain layer (model forecast), ` +
+            `this is an observation. Brighter colors mean heavier precipitation; a band that moves ` +
+            `between frames is usually a front or a line of showers.`,
         checkNext: [
             {
                 label: "Toggle Rain: compare what's observed now against the model forecast",
@@ -298,12 +299,12 @@ const clouds_default: DefaultFn = (f, ctx) => {
     return {
         title: "What you're seeing",
         mechanism: isCloudtop
-            ? `The cloud-top layer shows how high — and how cold — the tops of clouds reach. ` +
-              `High, cold tops mean deep convection: cumulonimbus towering toward the tropopause. ` +
-              `Low, warm tops are shallow stratus or fog. ${cloudPhrase} Here it's the height of ` +
-              `the top, not the amount of cover, that signals how strong the system is.`
-            : `The cloud layer shows how much of the sky is filled with cloud. Clouds form where ` +
-              `air rises and cools to its dew point, and clear where air sinks and warms. ${cloudPhrase} ` +
+            ? `${cloudPhrase} The cloud-top layer shows how high — and how cold — the tops of clouds ` +
+              `reach. High, cold tops mean deep convection: cumulonimbus towering toward the tropopause; ` +
+              `low, warm tops are shallow stratus or fog. It's the height of the top, not the amount ` +
+              `of cover, that signals how strong the system is.`
+            : `${cloudPhrase} The cloud layer shows how much of the sky is filled with cloud. Clouds ` +
+              `form where air rises and cools to its dew point, and clear where air sinks and warms. ` +
               `Cover alone doesn't tell you about rain — thick cloud can be dry, thin cloud can drizzle.`,
         checkNext: [
             {
