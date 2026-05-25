@@ -325,24 +325,69 @@ const clouds_default: DefaultFn = (f, ctx) => {
 
 const visibility_default: DefaultFn = (f, _ctx) => {
     const v = f.surface.visibility_m;
-    let visPhrase: string;
-    if (v != null) {
-        const km = v / 1000;
-        if (km >= 20) visPhrase = `Visibility here is about ${Math.round(km)} km — clear air.`;
-        else if (km >= 10) visPhrase = `Visibility here is about ${Math.round(km)} km — good.`;
-        else if (km >= 4) visPhrase = `Visibility here is about ${km.toFixed(1)} km — hazy or lightly misty.`;
-        else if (km >= 1)
-            visPhrase = `Visibility here is about ${km.toFixed(1)} km — fog, haze, or precipitation is cutting it down.`;
-        else visPhrase = 'Visibility here is under 1 km — dense fog or heavy precipitation.';
+    const humidity = f.surface.humidity_pct;
+    const precip = f.surface.precipitation_mm;
+    const pm2 = f.air_quality.pm2_5;
+
+    // Visibility is a composite — fog, haze, and precipitation all collapse to one
+    // number. Diagnose the most likely culprit from the contributing data so the
+    // card explains WHY it's reduced here, not just what the layer is.
+    let mechanism: string;
+    if (v == null) {
+        mechanism =
+            `Local visibility data is unavailable here. Visibility drops when something fills the air ` +
+            `between you and the horizon: water droplets (fog, mist), dry particles (haze, dust, smoke), ` +
+            `or falling rain and snow — each scatters or absorbs light on its way to your eye.`;
     } else {
-        visPhrase = 'Local visibility data is unavailable here.';
+        const km = v / 1000;
+        let lead: string;
+        let why: string;
+        if (km >= 20) {
+            lead = `Visibility here is about ${Math.round(km)} km — clean, clear air.`;
+            why =
+                `Almost nothing is scattering light on its way to you: the air is dry and largely ` +
+                `particle-free, so distant objects stay sharp. Air this clean usually means a ` +
+                `well-mixed, low-humidity air mass — classically the cool, dry flow behind a cold front ` +
+                `that has swept the haze away.`;
+        } else if (km >= 10) {
+            lead = `Visibility here is about ${Math.round(km)} km — good, with a little haze or moisture.`;
+            why =
+                `A small amount of suspended water vapour or fine particles is softening the horizon, ` +
+                `but not enough to obscure it. This is the everyday state of a moist or lightly hazy ` +
+                `air mass — light scatters off what's in the air, just not much of it yet.`;
+        } else if (precip != null && precip > 0.1) {
+            lead = `Visibility here is about ${km.toFixed(1)} km — cut down by precipitation.`;
+            why =
+                `Rain or snow is falling here (about ${precip.toFixed(1)} mm/h). Falling drops and ` +
+                `flakes scatter light in every direction and load the air with moisture, shrinking how ` +
+                `far you can see. Snow cuts visibility hardest — its flakes are larger and more numerous ` +
+                `than raindrops for the same water content.`;
+        } else if (humidity != null && humidity >= 90) {
+            lead = `Visibility here is about ${km.toFixed(1)} km — humid air on the edge of fog.`;
+            why =
+                `The air is close to saturation (about ${Math.round(humidity)}% humidity), so water ` +
+                `vapour is condensing into a fine suspended mist. This is the step just short of fog: ` +
+                `cool the air a little more, and the droplets thicken into a cloud sitting on the ground.`;
+        } else if (pm2 != null && pm2 >= 35) {
+            lead = `Visibility here is about ${km.toFixed(1)} km — hazy from airborne particles.`;
+            why =
+                `Fine particulate is elevated here (PM2.5 about ${Math.round(pm2)} µg/m³), and those dry ` +
+                `particles — dust, smoke, or pollution — scatter light in every direction. This is haze, ` +
+                `not fog: the culprit is solid particles rather than water droplets, so it won't burn ` +
+                `off with the morning sun the way fog does.`;
+        } else {
+            lead = `Visibility here is about ${km.toFixed(1)} km — moderately reduced.`;
+            why =
+                `A mix of humidity and fine particles is scattering light, with no single dominant ` +
+                `cause: not wet enough for mist, not dirty enough for clear haze. Reduced visibility ` +
+                `like this is typical of a settled, slightly stagnant air mass.`;
+        }
+        mechanism = `${lead} ${why}`;
     }
+
     return {
         title: "What you're seeing",
-        mechanism:
-            `${visPhrase} The visibility layer shows how far you could see at the surface — it drops ` +
-            `when something fills the air: fog and mist (water droplets), haze and dust (particles), ` +
-            `or heavy rain and snow. The sharpest gradients usually trace the edge of a fog bank or a front.`,
+        mechanism,
         checkNext: [
             {
                 label: 'Toggle Air Quality: haze-driven visibility loss shows up as elevated particulates',
@@ -354,8 +399,8 @@ const visibility_default: DefaultFn = (f, _ctx) => {
             },
         ],
         remember:
-            'Visibility is model output. Fog is especially hard to model — it forms and burns ' +
-            'off on local scales the model can miss.',
+            'Visibility is model output. Fog and mist are especially hard to model — they form and ' +
+            'burn off on local scales the model can miss.',
     };
 };
 
