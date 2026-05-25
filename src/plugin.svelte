@@ -103,10 +103,7 @@
 
             <p class="ww-card-lead">{mechLead}</p>
             {#if mechDetail}
-                <details class="ww-mech-detail">
-                    <summary class="ww-mech-detail-summary">How it works</summary>
-                    <p class="ww-card-mechanism">{mechDetail}</p>
-                </details>
+                <p class="ww-card-mechanism">{mechDetail}</p>
             {/if}
 
             <div class="ww-card-section">
@@ -1038,32 +1035,4 @@
         opacity: 1;
     }
 
-    // ---------- "How it works" disclosure (build #2: lead-first card) ----------
-
-    .ww-mech-detail {
-        margin: 0 0 1.4em;
-
-        .ww-mech-detail-summary {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35em;
-            padding: 0.22em 0;
-            font-size: 0.78em;
-            text-transform: uppercase;
-            letter-spacing: 0.09em;
-            opacity: 0.5;
-            cursor: pointer;
-            user-select: none;
-            list-style: none;
-
-            &::-webkit-details-marker { display: none; }
-
-            &::before { content: '▸'; font-size: 0.85em; }
-        }
-
-        &[open] .ww-mech-detail-summary { opacity: 0.65; }
-        &[open] .ww-mech-detail-summary::before { content: '▾'; }
-
-        .ww-card-mechanism { margin-top: 0.55em; }
-    }
 </style>
