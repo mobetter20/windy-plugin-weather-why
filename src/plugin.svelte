@@ -86,12 +86,14 @@
         </div>
     {:else if pattern && facts}
         <div class="ww-card">
-            <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
-            <span
-                class="ww-badge {pattern.id === 'layer_default'
-                    ? 'ww-badge--default'
-                    : 'ww-badge--pattern'}"
-            >{pattern.id === 'layer_default' ? 'Layer basics' : '✓ Pattern'}</span>
+            <div class="ww-card-topbar">
+                <button class="ww-back-link" type="button" on:click={backToHome}>← all patterns</button>
+                <span
+                    class="ww-badge {pattern.id === 'layer_default'
+                        ? 'ww-badge--default'
+                        : 'ww-badge--pattern'}"
+                >{pattern.id === 'layer_default' ? 'Layer basics' : '✓ Pattern'}</span>
+            </div>
 
             <div class="ww-meta">
                 {fmtCoords(pattern.location)}
@@ -908,27 +910,21 @@
 
     // ---------- Phase 3: badge / schematic / discoverability / catalogue ----------
 
+    // Status label (not a box) — sits beside the back link in the card top bar.
     .ww-badge {
         display: inline-block;
-        margin-bottom: 0.7em;
-        padding: 0.2em 0.62em;
-        border-radius: 0.4em;
         font-size: 0.64em;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.12em;
-        border: 1px solid rgba(127, 127, 127, 0.3);
     }
 
     .ww-badge--pattern {
         color: @accent;
-        border-color: fade(@accent, 45%);
-        background: fade(@accent, 12%);
     }
 
     .ww-badge--default {
         opacity: 0.5;
-        background: transparent;
         font-style: italic;
         letter-spacing: 0.08em;
     }
@@ -946,9 +942,20 @@
         padding-top: 1.05em;
     }
 
-    .ww-back-link {
+    // Card top bar: back nav + status label on one compact row (no vertical bulk,
+    // no clashing boxes — the badge is a plain label, only the back link is boxed).
+    .ww-card-topbar {
         display: flex;
-        width: fit-content;        // shrink to content, but own its own line (clear of the badge)
+        align-items: center;
+        gap: 0.7em;
+        margin-bottom: 0.85em;
+
+        .ww-back-link { margin: 0; }
+        .ww-badge { margin: 0; }
+    }
+
+    .ww-back-link {
+        display: inline-flex;
         align-items: center;
         margin: 0 0 1em;
         padding: 0.38em 0.75em;
