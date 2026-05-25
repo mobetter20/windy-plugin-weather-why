@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CATALOG, MODULES } from '../index';
 import { WINDY_OVERLAYS } from '../../types';
+import { stripClickHint } from '../../text';
 
 const byId = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -56,5 +57,24 @@ describe('CATALOG (map-tour data)', () => {
     it('every entry has a non-empty mechanism gist', () => {
         const empty = CATALOG.filter((c) => !c.gist || c.gist.trim().length === 0).map((c) => c.id);
         expect(empty).toEqual([]);
+    });
+
+    // The tour "where to look" line is stripClickHint(tourHint). Guard the two bugs
+    // the deep audit caught: a capitalised "Click …" surviving, and a connector left
+    // dangling ("… squall line —.").
+    describe('stripClickHint over every tourHint', () => {
+        it('removes every trailing click instruction (any case)', () => {
+            const offenders = CATALOG.map((c) => ({ id: c.id, out: stripClickHint(c.tourHint) }))
+                .filter((r) => /\bclick\b/i.test(r.out))
+                .map((r) => `${r.id} -> ${r.out}`);
+            expect(offenders).toEqual([]);
+        });
+
+        it('leaves a clean sentence (ends with ".", no dangling connector)', () => {
+            const offenders = CATALOG.map((c) => ({ id: c.id, out: stripClickHint(c.tourHint) }))
+                .filter((r) => !r.out.endsWith('.') || /[—–\-,;:]\s*\.$/.test(r.out))
+                .map((r) => `${r.id} -> ${r.out}`);
+            expect(offenders).toEqual([]);
+        });
     });
 });

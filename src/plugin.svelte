@@ -176,6 +176,7 @@
     import { fetchFacts, fetchPressureGrid, findSynopticFeatures } from './lib/facts';
     import { initViewportMarkers, gridForBounds } from './lib/viewport_markers';
     import { makeGlyphMarker } from './lib/mapglyph';
+    import { stripClickHint } from './lib/text';
     import {
         pickPattern,
         getSupportedLayers,
@@ -510,12 +511,6 @@
         error = null;
         isLoading = false;
         showCatalog = true;
-    }
-
-    // Remove trailing "then click X" instructions from tourHints — clicking is
-    // implicit when the map is active; no need to direct the user explicitly.
-    function stripClickHint(s: string): string {
-        return s.replace(/[,.]?\s*(then click\b[^.]*|click\b[^.]*)\.$/, '.').trimEnd();
     }
 
     function fmtCoords(loc: LatLon): string {

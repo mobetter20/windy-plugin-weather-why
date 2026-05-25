@@ -181,7 +181,7 @@ export const CATALOG: PatternCatalogEntry[] = [
         tourHint: "Find haze built up under calm high pressure, then click it.",
     },
     {
-        id: 'wind_gust_factor', title: 'High gust factor (gusts >> sustained)', layerHint: 'Gust layer',
+        id: 'wind_gust_factor', title: 'High gust factor (gusts far exceed the steady wind)', layerHint: 'Gust layer',
         overlay: 'gust',
         gist: "Gusts outrun the steady wind when turbulence — from rough ground, eddies, and convective mixing — brings pockets of faster air aloft down to the surface.",
         tourHint: "Compare with the Wind layer — the gap is widest over rough terrain. Click a gusty spot.",

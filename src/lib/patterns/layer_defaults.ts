@@ -18,7 +18,35 @@ import type { DetectContext, Facts, PatternCard, WindyOverlay } from '../types';
 
 type DefaultFn = (facts: Facts, ctx: DetectContext) => PatternCard;
 
-const wind_default: DefaultFn = (f, _ctx) => {
+const wind_default: DefaultFn = (f, ctx) => {
+    // The Gust overlay shares this default but shows a different quantity (peak
+    // gusts, not sustained wind) — branch so the copy matches the active layer.
+    if (ctx.activeLayer === 'gust') {
+        const gust = f.surface.wind_gust_kmh != null ? Math.round(f.surface.wind_gust_kmh) : null;
+        const gustPhrase =
+            gust != null ? `Peak gusts here are about ${gust} km/h.` : 'Local gust data is unavailable here.';
+        return {
+            title: "What you're seeing",
+            mechanism:
+                `${gustPhrase} The Gust layer shows the brief peak wind — short bursts that ride above ` +
+                `the steady (sustained) wind as turbulence drags faster air down from just above the ` +
+                `surface. The gap between gust and sustained wind is widest over rough ground and in ` +
+                `gusty, unstable air.`,
+            checkNext: [
+                {
+                    label: 'Toggle Wind: compare the steady wind — the gap between them is the gust factor',
+                    overlay: 'wind',
+                },
+                {
+                    label: 'Toggle Pressure: see the pressure pattern driving the wind',
+                    overlay: 'pressure',
+                },
+            ],
+            remember:
+                'Gusts are short-lived peaks, not the sustained wind. Trees and structures feel the ' +
+                'gusts; the sustained wind is what drives steady drift and transport.',
+        };
+    }
     const speed = f.surface.wind_speed_kmh != null ? Math.round(f.surface.wind_speed_kmh) : null;
     const compass = f.surface.wind_compass;
     const speedPhrase =
@@ -166,24 +194,40 @@ const satellite_default: DefaultFn = (f, _ctx) => {
 
 const cape_default: DefaultFn = (f, _ctx) => {
     const cape = f.instability.cape_jkg;
-    const capePhrase =
-        cape != null
-            ? `CAPE here is ${Math.round(cape)} J/kg — ${cape < 300 ? 'very low, indicating a stable atmosphere' : 'low enough that thunderstorm development is unlikely'}.`
-            : 'Local CAPE data is unavailable here.';
+    // The capped-instability pattern (CAPE >= 1000 AND no precip) didn't fire — so
+    // reaching the default at high CAPE means precipitation IS present: the fuel is
+    // already being released. Don't tell the user the sky is quiet in that case.
+    const high = cape != null && cape >= 1000;
+    let mechanism: string;
+    if (cape == null) {
+        mechanism =
+            `Local CAPE data is unavailable here. CAPE (Convective Available Potential Energy) is the ` +
+            `fuel a storm needs — energy a rising air parcel can tap once something lifts it past its cap.`;
+    } else if (high) {
+        mechanism =
+            `CAPE here is ${Math.round(cape)} J/kg — high; the atmosphere is loaded with storm fuel. ` +
+            `CAPE is the energy a rising air parcel can tap once something lifts it past its cap. With ` +
+            `this much available and precipitation around, that energy is likely already being released ` +
+            `— storms may be firing nearby right now.`;
+    } else {
+        mechanism =
+            `CAPE here is ${Math.round(cape)} J/kg — ${cape < 300 ? 'very low; the atmosphere is stable' : 'modest, not enough to fuel storms on its own'}. ` +
+            `CAPE is the fuel a storm needs: energy a rising air parcel could tap if pushed high enough ` +
+            `to escape its environment. With little of it, even a trigger — a front, sea breeze, or ` +
+            `terrain — won't produce much lift. The atmosphere just isn't loaded.`;
+    }
     return {
         title: "What you're seeing",
-        mechanism:
-            `${capePhrase} CAPE (Convective Available Potential Energy) is the fuel a storm needs: ` +
-            `energy a rising air parcel could tap if pushed high enough to escape its environment. ` +
-            `Low CAPE means even a trigger — a front, sea breeze, or terrain — won't produce ` +
-            `much lift. The atmosphere just isn't loaded.`,
+        mechanism,
         checkNext: [
             {
                 label: 'Toggle Wind: look for a front or convergence line that could act as a trigger',
                 overlay: 'wind',
             },
             {
-                label: "Toggle Radar: confirm the sky is quiet",
+                label: high
+                    ? 'Toggle Radar: see whether storms are already firing'
+                    : 'Toggle Radar: confirm the sky is quiet',
                 overlay: 'radar',
             },
         ],
