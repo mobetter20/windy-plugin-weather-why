@@ -102,10 +102,10 @@ src/
 2. **Layer default** — if no pattern fires, `getLayerDefault(layer, facts)` renders a "What you're seeing" card explaining the layer.
 3. **Layer not yet supported** — UI fallback names which layers ARE covered.
 
-Each pattern module exports `detect(facts, ctx)`, `visual(map, facts, params)` (returns a cleanup function; currently noop everywhere — Windy's own layers carry the visualisation), and `content(facts, params)` returning a `PatternCard` (title / mechanism / checkNext / remember).
+Each pattern module exports `detect(facts, ctx)`, `visual(map, facts, params)` (returns a cleanup function; draws plugin annotations onto the map where useful — e.g. the low-centre marker on cyclonic inflow — and is a noop for patterns that rely on Windy's own layers), and `content(facts, params)` returning a `PatternCard` (title / mechanism / checkNext / remember).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
-Publishing to Windy's plugin gallery additionally grants Windy a perpetual sublicensable license to the plugin source (standard for the plugin gallery). Currently `private: true` in [`src/pluginConfig.ts`](src/pluginConfig.ts) — distributable via personal share URL only until that flag is flipped and the publish action is run.
+Publishing to Windy's plugin gallery additionally grants Windy a perpetual sublicensable license to the plugin source (standard for the plugin gallery). `private: false` in [`src/pluginConfig.ts`](src/pluginConfig.ts) — distributed through Windy's plugin gallery.

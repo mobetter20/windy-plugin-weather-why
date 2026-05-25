@@ -2,7 +2,7 @@ import type { ExternalPluginConfig } from '@windy/interfaces';
 
 const config: ExternalPluginConfig = {
     name: 'windy-plugin-weather-why',
-    version: '0.2.0',
+    version: '0.3.0',
     icon: '🌤️',
     title: 'Weather Why',
     description:
