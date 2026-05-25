@@ -347,9 +347,9 @@ const visibility_default: DefaultFn = (f, _ctx) => {
             lead = `Visibility here is about ${Math.round(km)} km — clean, clear air.`;
             why =
                 `Almost nothing is scattering light on its way to you: the air is dry and largely ` +
-                `particle-free, so distant objects stay sharp. Air this clean usually means a ` +
-                `well-mixed, low-humidity air mass — classically the cool, dry flow behind a cold front ` +
-                `that has swept the haze away.`;
+                `particle-free, so distant objects stay sharp. Air this clean means a dry, well-mixed ` +
+                `air mass with little suspended in it — often the crisp air that follows a strong cold ` +
+                `front, once it has flushed out the humid, hazy air ahead of it.`;
         } else if (km >= 10) {
             lead = `Visibility here is about ${Math.round(km)} km — good, with a little haze or moisture.`;
             why =
@@ -361,14 +361,14 @@ const visibility_default: DefaultFn = (f, _ctx) => {
             why =
                 `Rain or snow is falling here (about ${precip.toFixed(1)} mm/h). Falling drops and ` +
                 `flakes scatter light in every direction and load the air with moisture, shrinking how ` +
-                `far you can see. Snow cuts visibility hardest — its flakes are larger and more numerous ` +
-                `than raindrops for the same water content.`;
+                `far you can see. Snow cuts visibility hardest — its large, irregular ice crystals ` +
+                `scatter far more light than the raindrops that would carry the same amount of water.`;
         } else if (humidity != null && humidity >= 90) {
             lead = `Visibility here is about ${km.toFixed(1)} km — humid air on the edge of fog.`;
             why =
-                `The air is close to saturation (about ${Math.round(humidity)}% humidity), so water ` +
-                `vapour is condensing into a fine suspended mist. This is the step just short of fog: ` +
-                `cool the air a little more, and the droplets thicken into a cloud sitting on the ground.`;
+                `The air is very humid (about ${Math.round(humidity)}%), so moisture is condensing into ` +
+                `a fine mist — water droplets and damp particles suspended in the air. This is the step ` +
+                `just short of fog: cool it a little more and they thicken into a cloud sitting on the ground.`;
         } else if (pm2 != null && pm2 >= 35) {
             lead = `Visibility here is about ${km.toFixed(1)} km — hazy from airborne particles.`;
             why =
