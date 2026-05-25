@@ -145,8 +145,8 @@
                     No matching pattern at this click on the {layerLabel(currentLayer)} layer.
                 </p>
                 <p class="ww-fallback-detail">
-                    Try a region with a visible swirl in the wind streamlines — that's where the
-                    "wind curling around a low" pattern fires.
+                    Try clicking where this layer shows a distinct feature — a swirl, a sharp
+                    gradient, a coloured band — that's where a pattern fires.
                 </p>
             {:else}
                 <p>
