@@ -62,7 +62,7 @@
                 {/if}
                 <p class="ww-tour-look">{stripClickHint(tour.caption)}</p>
                 <p class="ww-tour-cta">Tap the map where you see it for a live reading.</p>
-            {:else}
+            {:else if tour.flew}
                 <!-- Tier-1: flew to a live feature -->
                 <span class="ww-tour-tier ww-tour-tier--fly">📍 Flew here</span>
                 <p class="ww-tour-caption">{tour.caption}</p>
@@ -72,6 +72,9 @@
                         <span>{tour.nudge}</span>
                     </div>
                 {/if}
+            {:else}
+                <!-- Interim "looking for a live one…" — no badge, just the status -->
+                <p class="ww-tour-caption">{tour.caption}</p>
             {/if}
         </div>
     {:else if error}
@@ -344,6 +347,18 @@
         return entry.level === 'surface' ? `${base} · surface` : base;
     }
 
+    // Pattern-intro tour state: title + why (gist) + where-to-look. Used for tier-2
+    // taps and for tier-1 taps that can't fly (no live feature in view, or no map).
+    function patternIntroTour(entry: PatternCatalogEntry) {
+        return {
+            caption: entry.tourHint,
+            nudge: '',
+            flew: false,
+            patternTitle: entry.title,
+            gist: entry.gist,
+        };
+    }
+
     async function runTour(entry: PatternCatalogEntry) {
         showCatalog = false;
 
@@ -366,19 +381,13 @@
         // Tier 2 — switch the layer and show a pattern-intro card so the user
         // knows what to look for. Tap the map anywhere to get a live reading.
         if (!entry.locate) {
-            tour = {
-                caption: entry.tourHint,
-                nudge: '',
-                flew: false,
-                patternTitle: entry.title,
-                gist: entry.gist,
-            };
+            tour = patternIntroTour(entry);
             return;
         }
 
-        // Tier 1 — flyTo; degrade to hint if map API unavailable.
+        // Tier 1 — flyTo; degrade to the intro card if the map API is unavailable.
         if (!mapReady()) {
-            tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+            tour = patternIntroTour(entry);
             return;
         }
 
@@ -393,13 +402,13 @@
             if (ac.signal.aborted) return;
             const syn = findSynopticFeatures(grid, center.lat, center.lng);
             if (!placeTourFeature(entry, syn)) {
-                // Nothing qualifying in view — degrade to the eye-guide fallback.
-                tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+                // Nothing qualifying in view — degrade to the pattern-intro card.
+                tour = patternIntroTour(entry);
             }
         } catch (e: any) {
             if (e?.name === 'AbortError') return;
-            // A tour must never hard-error; fall back to guidance.
-            tour = { caption: `Switched to ${label}. ${entry.tourHint}`, nudge: '', flew: false };
+            // A tour must never hard-error; fall back to the pattern-intro card.
+            tour = patternIntroTour(entry);
         } finally {
             if (tourInflight === ac) tourInflight = null;
         }
