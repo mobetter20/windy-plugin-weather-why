@@ -68,7 +68,7 @@ function content(_facts: Facts, p: Params) {
                 overlay: 'wind' as const,
             },
             {
-                label: 'Toggle Pressure: surface lows often deepen on the south/equatorward side of fast jet streaks',
+                label: 'Toggle Pressure: surface lows often deepen just beneath and downstream of fast jet streaks',
                 overlay: 'pressure' as const,
             },
         ],
