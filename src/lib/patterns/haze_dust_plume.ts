@@ -28,16 +28,20 @@ function detect(facts: Facts, _ctx: DetectContext) {
 
     let confidence = 0;
     if (active) confidence += 0.4;
-    // EPA "unhealthy for sensitive groups": PM2.5 ≥ 55, PM10 ≥ 155
+    // Soft ranking tiers — a higher concentration reads as a clearer plume signal.
     if (pm2 >= 55 || pm10 >= 155) confidence += 0.3;
-    // EPA "unhealthy": PM2.5 ≥ 150, PM10 ≥ 254
     if (pm2 >= 150 || pm10 >= 254) confidence += 0.3;
     confidence = Math.min(confidence, 1);
 
+    // Health category by EPA AQI 24-h breakpoints. PM2.5 sits on a far lower scale
+    // than PM10: "Unhealthy for Sensitive Groups" starts at 35.5 (not 55) and
+    // "Unhealthy" (for everyone) at 55.5 (not 150). The old thresholds used
+    // PM10-scale numbers for PM2.5, under-stating the tier by one. PM10's own
+    // breakpoints (155 USG, 255 Unhealthy) were already correct.
     const category: Params['category'] =
-        pm2 >= 150 || pm10 >= 254
+        pm2 >= 55.5 || pm10 >= 255
             ? 'unhealthy'
-            : pm2 >= 55 || pm10 >= 155
+            : pm2 >= 35.5 || pm10 >= 155
               ? 'unhealthy_sensitive'
               : 'moderate';
 

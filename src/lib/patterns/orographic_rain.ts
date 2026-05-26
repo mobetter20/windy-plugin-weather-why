@@ -6,7 +6,7 @@
 // Trigger layers: 'rain', 'rainAccu', 'radar'.
 //
 // Mechanism: as wind-driven air hits rising terrain it rises and cools
-// adiabatically (~6°C/km dry, ~4°C/km saturated). When it cools to the dew
+// adiabatically (~9.8°C/km dry, ~5°C/km once saturated). When it cools to the dew
 // point, moisture condenses and falls on the windward slope. The leeward
 // side gets the rain shadow — descending air warms and dries.
 //
